@@ -1,0 +1,245 @@
+2026-07-09 09:02:54,693 | INFO | main | Starting bot cycle
+2026-07-09 09:02:54,728 | INFO | main | Detected 1 pattern(s)
+2026-07-09 09:02:54,728 | INFO | main | Best pattern: Ascending_Channel | confidence: 0.79
+2026-07-09 09:02:56,950 | INFO | main | Using live MT5 account balance: 219.23
+2026-07-09 09:02:56,950 | INFO | main | Trade plan ready: {'pattern_name': 'Ascending_Channel', 'direction': 'bull', 'quality': 0.8, 'status': 'Risk Entry', 'breakout_level': 1.08817, 'entry_price': 1.08792, 'stop_loss': 1.08722, 'take_profit': 1.0893199999999998, 'position_size': 3131.8571}
+2026-07-09 09:05:21,937 | INFO | main | Starting bot cycle
+2026-07-09 09:05:21,948 | INFO | main | Detected 1 pattern(s)
+2026-07-09 09:05:21,949 | INFO | main | Best pattern: Ascending_Channel | confidence: 0.79
+2026-07-09 09:05:24,328 | INFO | main | Using live MT5 account balance: 219.23
+2026-07-09 09:05:24,329 | INFO | main | Trade plan ready: {'pattern_name': 'Ascending_Channel', 'direction': 'bull', 'quality': 0.8, 'status': 'Risk Entry', 'breakout_level': 1.08817, 'entry_price': 1.08792, 'stop_loss': 1.08722, 'take_profit': 1.0893199999999998, 'position_size': 3131.8571}
+2026-07-09 09:19:47,110 | INFO | main | Bot started on localhost
+2026-07-09 09:19:47,110 | INFO | main | Starting bot cycle
+2026-07-09 09:19:49,135 | WARNING | main | Position monitoring failed: 'TradePosition' object has no attribute 'profit_percent'
+2026-07-09 09:19:49,155 | INFO | main | Detected 1 pattern(s)
+2026-07-09 09:19:49,156 | INFO | main | Best pattern: Ascending_Channel | confidence: 0.79
+2026-07-09 09:19:49,156 | INFO | main | Using live MT5 account balance: 219.23
+2026-07-09 09:19:49,289 | INFO | main | Trade plan ready: {'pattern_name': 'Ascending_Channel', 'direction': 'bull', 'quality': 0.8, 'status': 'Risk Entry', 'breakout_level': 1.08817, 'entry_price': 1.08792, 'stop_loss': 1.08722, 'take_profit': 1.0893199999999998, 'position_size': 3131.8571}
+2026-07-09 09:20:22,934 | INFO | main | Bot started on localhost
+2026-07-09 09:20:22,935 | INFO | main | Starting bot cycle
+2026-07-09 09:20:24,859 | INFO | main | Monitoring 3 open position(s)
+2026-07-09 09:20:24,859 | INFO | main |    EURUSD BUY | Price: 1.14360 | PnL: -$1.50 (-0.04%)
+2026-07-09 09:20:24,859 | INFO | main |    EURUSD BUY | Price: 1.14360 | PnL: -$0.87 (-0.03%)
+2026-07-09 09:20:24,860 | INFO | main |    EURUSD BUY | Price: 1.14360 | PnL: -$0.84 (-0.02%)
+2026-07-09 09:20:24,873 | INFO | main | Detected 1 pattern(s)
+2026-07-09 09:20:24,873 | INFO | main | Best pattern: Ascending_Channel | confidence: 0.79
+2026-07-09 09:20:27,575 | INFO | main | Using live MT5 account balance: 219.23
+2026-07-09 09:20:27,575 | INFO | main | Risk: $2.19 (1.00% of $219.23)
+2026-07-09 09:20:27,575 | INFO | main | Trade plan ready: {'pattern_name': 'Ascending_Channel', 'direction': 'bull', 'quality': 0.8, 'status': 'Risk Entry', 'breakout_level': 1.08817, 'entry_price': 1.08792, 'stop_loss': 1.08722, 'take_profit': 1.0893199999999998, 'position_size': 3131.8571}
+2026-07-09 09:21:15,067 | INFO | main | Starting bot cycle
+2026-07-09 09:21:17,315 | INFO | main | Monitoring 4 open position(s)
+2026-07-09 09:21:17,316 | INFO | main |    EURUSD BUY | Price: 1.14368 | PnL: -$1.26 (-0.04%)
+2026-07-09 09:21:17,316 | INFO | main |    EURUSD BUY | Price: 1.14368 | PnL: -$0.63 (-0.02%)
+2026-07-09 09:21:17,316 | INFO | main |    EURUSD BUY | Price: 1.14368 | PnL: -$0.60 (-0.02%)
+2026-07-09 09:21:17,317 | INFO | main |    EURUSD BUY | Price: 1.14368 | PnL: -$0.09 (-0.00%)
+2026-07-09 09:21:17,326 | INFO | main | Detected 1 pattern(s)
+2026-07-09 09:21:17,327 | INFO | main | Best pattern: Ascending_Channel | confidence: 0.79
+2026-07-09 09:21:19,378 | INFO | main | Using live MT5 account balance: 219.23
+2026-07-09 09:21:19,378 | INFO | main | Risk: $2.19 (1.00% of $219.23)
+2026-07-09 09:21:19,378 | INFO | main | Trade plan ready: {'pattern_name': 'Ascending_Channel', 'direction': 'bull', 'quality': 0.8, 'status': 'Risk Entry', 'breakout_level': 1.08817, 'entry_price': 1.08792, 'stop_loss': 1.08722, 'take_profit': 1.0893199999999998, 'position_size': 3131.8571}
+2026-07-09 09:25:03,262 | INFO | main | Bot started on localhost
+2026-07-09 09:25:03,263 | INFO | main | Starting bot cycle
+2026-07-09 09:25:05,411 | INFO | main | Monitoring 5 open position(s)
+2026-07-09 09:25:05,411 | INFO | main |    EURUSD BUY | Price: 1.14364 | PnL: -$1.38 (-0.04%)
+2026-07-09 09:25:05,411 | INFO | main |    EURUSD BUY | Price: 1.14364 | PnL: -$0.75 (-0.02%)
+2026-07-09 09:25:05,411 | INFO | main |    EURUSD BUY | Price: 1.14364 | PnL: -$0.72 (-0.02%)
+2026-07-09 09:25:05,412 | INFO | main |    EURUSD BUY | Price: 1.14364 | PnL: -$0.21 (-0.01%)
+2026-07-09 09:25:05,412 | INFO | main |    EURUSD BUY | Price: 1.14364 | PnL: -$0.39 (-0.01%)
+2026-07-09 09:25:05,420 | INFO | main | Detected 1 pattern(s)
+2026-07-09 09:25:05,420 | INFO | main | Best pattern: Ascending_Channel | confidence: 0.79
+2026-07-09 09:25:07,340 | INFO | main | Using live MT5 account balance: 219.23
+2026-07-09 09:25:07,341 | INFO | main | Risk: $2.19 (1.00% of $219.23)
+2026-07-09 09:25:07,341 | INFO | main | Trade plan ready: {'pattern_name': 'Ascending_Channel', 'direction': 'bull', 'quality': 0.8, 'status': 'Risk Entry', 'breakout_level': 1.08817, 'entry_price': 1.08792, 'stop_loss': 1.08722, 'take_profit': 1.0893199999999998, 'position_size': 3131.8571}
+2026-07-09 09:37:56,010 | INFO | main | Bot stopped by user
+2026-07-10 06:45:06,651 | INFO | main | Bot started on localhost
+2026-07-10 06:45:06,652 | INFO | main | Starting bot cycle
+2026-07-10 06:45:13,390 | INFO | main | Detected 1 pattern(s)
+2026-07-10 06:45:13,390 | INFO | main | Best pattern: Ascending_Channel | confidence: 0.79
+2026-07-10 06:45:15,818 | INFO | main | Using live MT5 account balance: 214.13
+2026-07-10 06:45:15,818 | INFO | main | Risk: $2.14 (1.00% of $214.13)
+2026-07-10 06:45:15,818 | INFO | main | Trade plan ready: {'pattern_name': 'Ascending_Channel', 'direction': 'bull', 'quality': 0.8, 'status': 'Risk Entry', 'breakout_level': 1.08817, 'entry_price': 1.08792, 'stop_loss': 1.08722, 'take_profit': 1.0893199999999998, 'position_size': 3059.0}
+2026-07-10 06:54:19,311 | INFO | main | Bot stopped by user
+2026-07-10 07:32:36,694 | INFO | main | Bot started on localhost
+2026-07-10 07:32:36,695 | INFO | main | Starting bot cycle
+2026-07-10 07:32:38,673 | INFO | main | Detected 2 pattern(s)
+2026-07-10 07:32:38,674 | INFO | main | Best pattern: Bull_Triangle | confidence: 0.67
+2026-07-10 07:32:40,518 | INFO | main | Using live MT5 account balance: 212.93
+2026-07-10 07:32:40,519 | INFO | main | Risk: $2.13 (1.00% of $212.93)
+2026-07-10 07:32:40,519 | INFO | main | Trade plan ready: {'pattern_name': 'Bull_Triangle', 'direction': 'bull', 'quality': 0.8, 'status': 'Risk Entry', 'breakout_level': 1.08817, 'entry_price': 1.08792, 'stop_loss': 1.08722, 'take_profit': 1.0893199999999998, 'position_size': 53.2325}
+2026-07-10 07:32:40,520 | ERROR | main | MT5 execution failed: MT5 order failed with code 10016, comment=Invalid stops
+Traceback (most recent call last):
+  File "C:\Users\Lenovo\Desktop\bot\main.py", line 124, in run_cycle
+    order_result = mt5_client.place_order(
+        symbol="EURUSD",
+    ...<3 lines>...
+        take_profit=trade_plan["take_profit"],
+    )
+  File "C:\Users\Lenovo\Desktop\bot\execution\mt5_client.py", line 171, in place_order
+    raise RuntimeError(
+    ...<2 lines>...
+    )
+RuntimeError: MT5 order failed with code 10016, comment=Invalid stops
+2026-07-10 07:32:45,558 | INFO | main | Starting bot cycle
+2026-07-10 07:32:47,829 | INFO | main | Detected 2 pattern(s)
+2026-07-10 07:32:47,829 | INFO | main | Best pattern: Bull_Triangle | confidence: 0.67
+2026-07-10 07:32:49,684 | INFO | main | Using live MT5 account balance: 212.93
+2026-07-10 07:32:49,684 | INFO | main | Risk: $2.13 (1.00% of $212.93)
+2026-07-10 07:32:49,684 | INFO | main | Trade plan ready: {'pattern_name': 'Bull_Triangle', 'direction': 'bull', 'quality': 0.8, 'status': 'Risk Entry', 'breakout_level': 1.08817, 'entry_price': 1.08792, 'stop_loss': 1.08722, 'take_profit': 1.0893199999999998, 'position_size': 53.2325}
+2026-07-10 07:32:49,685 | ERROR | main | MT5 execution failed: MT5 order failed with code 10016, comment=Invalid stops
+Traceback (most recent call last):
+  File "C:\Users\Lenovo\Desktop\bot\main.py", line 124, in run_cycle
+    order_result = mt5_client.place_order(
+        symbol="EURUSD",
+    ...<3 lines>...
+        take_profit=trade_plan["take_profit"],
+    )
+  File "C:\Users\Lenovo\Desktop\bot\execution\mt5_client.py", line 171, in place_order
+    raise RuntimeError(
+    ...<2 lines>...
+    )
+RuntimeError: MT5 order failed with code 10016, comment=Invalid stops
+2026-07-10 07:50:39,025 | INFO | main | Bot started on localhost
+2026-07-10 07:50:39,026 | INFO | main | Starting bot cycle
+2026-07-10 07:50:42,026 | INFO | main | Detected 2 pattern(s)
+2026-07-10 07:50:42,026 | INFO | main | Best pattern: Bull_Triangle | confidence: 0.67
+2026-07-10 07:50:45,538 | INFO | main | Using live MT5 account balance: 212.93
+2026-07-10 07:50:45,539 | INFO | main | Risk: $2.13 (1.00% of $212.93)
+2026-07-10 07:50:45,539 | INFO | main | Trade plan ready: {'pattern_name': 'Bull_Triangle', 'direction': 'bull', 'quality': 0.8, 'status': 'Risk Entry', 'breakout_level': 1.08817, 'entry_price': 1.08792, 'stop_loss': 1.08722, 'take_profit': 1.0893199999999998, 'position_size': 53.2325}
+2026-07-10 07:50:45,540 | ERROR | main | MT5 execution failed: Buy take profit must be above the current price
+Traceback (most recent call last):
+  File "C:\Users\Lenovo\Desktop\bot\main.py", line 126, in run_cycle
+    order_result = mt5_client.place_order(
+        symbol="EURUSD",
+    ...<3 lines>...
+        take_profit=trade_plan["take_profit"],
+    )
+  File "C:\Users\Lenovo\Desktop\bot\execution\mt5_client.py", line 155, in place_order
+    raise ValueError("Buy take profit must be above the current price")
+ValueError: Buy take profit must be above the current price
+2026-07-10 07:54:21,773 | INFO | main | Bot stopped by user
+2026-07-10 07:55:39,107 | INFO | main | Bot started on localhost
+2026-07-10 07:55:39,107 | INFO | main | Starting bot cycle
+2026-07-10 07:55:40,992 | INFO | main | Detected 2 pattern(s)
+2026-07-10 07:55:40,992 | INFO | main | Best pattern: Bull_Triangle | confidence: 0.67
+2026-07-10 07:55:42,961 | INFO | main | Using live MT5 account balance: 212.93
+2026-07-10 07:55:42,962 | INFO | main | Risk: $2.13 (1.00% of $212.93)
+2026-07-10 07:55:42,963 | INFO | main | Trade plan ready: {'pattern_name': 'Bull_Triangle', 'direction': 'bull', 'quality': 0.8, 'status': 'Risk Entry', 'breakout_level': 1.08817, 'entry_price': 1.08792, 'stop_loss': 1.08722, 'take_profit': 1.0893199999999998, 'position_size': 53.2325}
+2026-07-10 08:10:43,502 | INFO | main | Starting bot cycle
+2026-07-10 08:10:45,684 | INFO | main | Monitoring 1 open position(s)
+2026-07-10 08:10:45,684 | INFO | main |    EURUSD BUY | Price: 1.14414 | PnL: +$0.15 (0.01%)
+2026-07-10 08:10:45,712 | INFO | main | Detected 2 pattern(s)
+2026-07-10 08:10:45,712 | INFO | main | Best pattern: Bull_Triangle | confidence: 0.67
+2026-07-10 08:10:48,087 | INFO | main | Using live MT5 account balance: 212.93
+2026-07-10 08:10:48,087 | INFO | main | Risk: $2.13 (1.00% of $212.93)
+2026-07-10 08:10:48,088 | INFO | main | Trade plan ready: {'pattern_name': 'Bull_Triangle', 'direction': 'bull', 'quality': 0.8, 'status': 'Risk Entry', 'breakout_level': 1.08817, 'entry_price': 1.08792, 'stop_loss': 1.08722, 'take_profit': 1.0893199999999998, 'position_size': 53.2325}
+2026-07-10 08:25:49,322 | INFO | main | Starting bot cycle
+2026-07-10 08:25:51,606 | INFO | main | Monitoring 2 open position(s)
+2026-07-10 08:25:51,608 | INFO | main |    EURUSD BUY | Price: 1.14438 | PnL: +$0.39 (0.03%)
+2026-07-10 08:25:51,612 | INFO | main |    EURUSD BUY | Price: 1.14438 | PnL: +$0.14 (0.01%)
+2026-07-10 08:25:51,681 | INFO | main | Detected 2 pattern(s)
+2026-07-10 08:25:51,681 | INFO | main | Best pattern: Bull_Triangle | confidence: 0.67
+2026-07-10 08:25:53,599 | INFO | main | Using live MT5 account balance: 212.93
+2026-07-10 08:25:53,599 | INFO | main | Risk: $2.13 (1.00% of $212.93)
+2026-07-10 08:25:53,599 | INFO | main | Trade plan ready: {'pattern_name': 'Bull_Triangle', 'direction': 'bull', 'quality': 0.8, 'status': 'Risk Entry', 'breakout_level': 1.08817, 'entry_price': 1.08792, 'stop_loss': 1.08722, 'take_profit': 1.0893199999999998, 'position_size': 53.2325}
+2026-07-10 08:40:54,065 | INFO | main | Starting bot cycle
+2026-07-10 08:40:56,859 | INFO | main | Monitoring 3 open position(s)
+2026-07-10 08:40:56,859 | INFO | main |    EURUSD BUY | Price: 1.14428 | PnL: +$0.29 (0.03%)
+2026-07-10 08:40:56,860 | INFO | main |    EURUSD BUY | Price: 1.14428 | PnL: +$0.04 (0.00%)
+2026-07-10 08:40:56,860 | INFO | main |    EURUSD BUY | Price: 1.14428 | PnL: -$0.21 (-0.02%)
+2026-07-10 08:40:56,907 | INFO | main | Detected 2 pattern(s)
+2026-07-10 08:40:56,907 | INFO | main | Best pattern: Bull_Triangle | confidence: 0.67
+2026-07-10 08:41:00,856 | INFO | main | Using live MT5 account balance: 212.93
+2026-07-10 08:41:00,857 | INFO | main | Risk: $2.13 (1.00% of $212.93)
+2026-07-10 08:41:00,857 | INFO | main | Trade plan ready: {'pattern_name': 'Bull_Triangle', 'direction': 'bull', 'quality': 0.8, 'status': 'Risk Entry', 'breakout_level': 1.08817, 'entry_price': 1.08792, 'stop_loss': 1.08722, 'take_profit': 1.0893199999999998, 'position_size': 53.2325}
+2026-07-10 08:56:03,710 | INFO | main | Starting bot cycle
+2026-07-10 08:56:06,696 | INFO | main | Monitoring 4 open position(s)
+2026-07-10 08:56:06,696 | INFO | main |    EURUSD BUY | Price: 1.14414 | PnL: +$0.15 (0.01%)
+2026-07-10 08:56:06,696 | INFO | main |    EURUSD BUY | Price: 1.14414 | PnL: -$0.10 (-0.01%)
+2026-07-10 08:56:06,697 | INFO | main |    EURUSD BUY | Price: 1.14414 | PnL: -$0.35 (-0.03%)
+2026-07-10 08:56:06,697 | INFO | main |    EURUSD BUY | Price: 1.14414 | PnL: -$0.22 (-0.02%)
+2026-07-10 08:56:06,722 | INFO | main | Detected 2 pattern(s)
+2026-07-10 08:56:06,723 | INFO | main | Best pattern: Bull_Triangle | confidence: 0.67
+2026-07-10 08:56:09,521 | INFO | main | Using live MT5 account balance: 212.93
+2026-07-10 08:56:09,521 | INFO | main | Risk: $2.13 (1.00% of $212.93)
+2026-07-10 08:56:09,522 | INFO | main | Trade plan ready: {'pattern_name': 'Bull_Triangle', 'direction': 'bull', 'quality': 0.8, 'status': 'Risk Entry', 'breakout_level': 1.08817, 'entry_price': 1.08792, 'stop_loss': 1.08722, 'take_profit': 1.0893199999999998, 'position_size': 53.2325}
+2026-07-11 02:38:01,851 | INFO | main | Bot started on localhost
+2026-07-11 02:38:01,853 | INFO | main | Starting bot cycle
+2026-07-11 02:38:06,612 | INFO | main | Detected 2 pattern(s)
+2026-07-11 02:38:06,613 | INFO | main | Best pattern: Bull_Triangle | confidence: 0.52
+2026-07-11 02:38:09,160 | INFO | main | Using live MT5 account balance: 209.46
+2026-07-11 02:38:09,161 | INFO | main | Risk: $2.09 (1.00% of $209.46)
+2026-07-11 02:38:09,161 | INFO | main | Trade plan ready: {'pattern_name': 'Bull_Triangle', 'direction': 'bull', 'quality': 0.52, 'status': 'Risk Entry', 'breakout_level': 1.08817, 'entry_price': 1.08792, 'stop_loss': 1.08722, 'take_profit': 1.0893199999999998, 'position_size': 52.365}
+2026-07-11 02:38:09,161 | INFO | main | MT5 thought process: pattern=Bull_Triangle direction=bull entry=1.08792 sl=1.08722 tp=1.08932
+2026-07-11 02:38:09,744 | ERROR | main | MT5 execution failed: MT5 order failed with code 10018, comment=Market closed
+Traceback (most recent call last):
+  File "C:\Users\Lenovo\Desktop\bot\main.py", line 139, in run_cycle
+    order_result = mt5_client.place_order(
+        symbol="EURUSD",
+    ...<5 lines>...
+        comment=analysis_comment,
+    )
+  File "C:\Users\Lenovo\Desktop\bot\execution\mt5_client.py", line 216, in place_order
+    raise RuntimeError(
+    ...<2 lines>...
+    )
+RuntimeError: MT5 order failed with code 10018, comment=Market closed
+2026-07-11 02:53:09,785 | INFO | main | Starting bot cycle
+2026-07-11 02:53:13,139 | INFO | main | Detected 2 pattern(s)
+2026-07-11 02:53:13,140 | INFO | main | Best pattern: Bull_Triangle | confidence: 0.52
+2026-07-11 02:53:15,369 | INFO | main | Using live MT5 account balance: 209.46
+2026-07-11 02:53:15,370 | INFO | main | Risk: $2.09 (1.00% of $209.46)
+2026-07-11 02:53:15,370 | INFO | main | Trade plan ready: {'pattern_name': 'Bull_Triangle', 'direction': 'bull', 'quality': 0.52, 'status': 'Risk Entry', 'breakout_level': 1.08817, 'entry_price': 1.08792, 'stop_loss': 1.08722, 'take_profit': 1.0893199999999998, 'position_size': 52.365}
+2026-07-11 02:53:15,371 | INFO | main | MT5 thought process: pattern=Bull_Triangle direction=bull entry=1.08792 sl=1.08722 tp=1.08932
+2026-07-11 02:53:15,676 | ERROR | main | MT5 execution failed: MT5 order failed with code 10018, comment=Market closed
+Traceback (most recent call last):
+  File "C:\Users\Lenovo\Desktop\bot\main.py", line 139, in run_cycle
+    order_result = mt5_client.place_order(
+        symbol="EURUSD",
+    ...<5 lines>...
+        comment=analysis_comment,
+    )
+  File "C:\Users\Lenovo\Desktop\bot\execution\mt5_client.py", line 216, in place_order
+    raise RuntimeError(
+    ...<2 lines>...
+    )
+RuntimeError: MT5 order failed with code 10018, comment=Market closed
+2026-07-11 03:08:15,702 | INFO | main | Starting bot cycle
+2026-07-11 03:08:17,999 | INFO | main | Detected 2 pattern(s)
+2026-07-11 03:08:17,999 | INFO | main | Best pattern: Bull_Triangle | confidence: 0.52
+2026-07-11 03:08:19,859 | INFO | main | Using live MT5 account balance: 209.46
+2026-07-11 03:08:19,859 | INFO | main | Risk: $2.09 (1.00% of $209.46)
+2026-07-11 03:08:19,859 | INFO | main | Trade plan ready: {'pattern_name': 'Bull_Triangle', 'direction': 'bull', 'quality': 0.52, 'status': 'Risk Entry', 'breakout_level': 1.08817, 'entry_price': 1.08792, 'stop_loss': 1.08722, 'take_profit': 1.0893199999999998, 'position_size': 52.365}
+2026-07-11 03:08:19,859 | INFO | main | MT5 thought process: pattern=Bull_Triangle direction=bull entry=1.08792 sl=1.08722 tp=1.08932
+2026-07-11 03:08:20,143 | ERROR | main | MT5 execution failed: MT5 order failed with code 10018, comment=Market closed
+Traceback (most recent call last):
+  File "C:\Users\Lenovo\Desktop\bot\main.py", line 139, in run_cycle
+    order_result = mt5_client.place_order(
+        symbol="EURUSD",
+    ...<5 lines>...
+        comment=analysis_comment,
+    )
+  File "C:\Users\Lenovo\Desktop\bot\execution\mt5_client.py", line 216, in place_order
+    raise RuntimeError(
+    ...<2 lines>...
+    )
+RuntimeError: MT5 order failed with code 10018, comment=Market closed
+2026-07-11 03:15:18,468 | INFO | main | Bot stopped by user
+2026-07-13 18:10:43,204 | INFO | main | Bot started on localhost
+2026-07-13 18:10:43,206 | INFO | main | Starting bot cycle
+2026-07-13 18:10:53,242 | INFO | main | Detected 2 pattern(s)
+2026-07-13 18:10:53,243 | INFO | main | Best pattern: Bull_Triangle | confidence: 0.52
+2026-07-13 18:10:53,244 | WARNING | main | Signal below minimum entry confidence 0.65; skipping execution.
+2026-07-13 18:13:37,898 | INFO | main | Bot started on localhost
+2026-07-13 18:13:37,899 | INFO | main | Starting bot cycle
+2026-07-13 18:13:42,348 | INFO | main | Detected 2 pattern(s)
+2026-07-13 18:13:42,349 | INFO | main | Best pattern: Bull_Triangle | confidence: 0.52
+2026-07-13 18:13:42,349 | WARNING | main | Signal below minimum entry confidence 0.65; skipping execution.
+2026-07-13 18:25:19,166 | INFO | main | Bot stopped by user
+2026-07-13 19:03:47,087 | INFO | main | Bot started on localhost
+2026-07-13 19:03:47,087 | INFO | main | Starting bot cycle
+2026-07-13 19:03:50,015 | INFO | main | Detected 4 pattern(s)
+2026-07-13 19:03:50,015 | INFO | main | Best pattern: Bull_Flat | confidence: 0.73
+2026-07-13 19:03:52,015 | INFO | main | Using live MT5 account balance: 209.46
+2026-07-13 19:03:52,016 | INFO | main | Risk: $2.09 (1.00% of $209.46)
+2026-07-13 19:03:52,016 | INFO | main | Trade plan ready: {'pattern_name': 'Bull_Flat', 'direction': 'bull', 'quality': 0.74, 'status': 'Moderate Confidence', 'breakout_level': 1.088311641222549, 'entry_price': 1.08792, 'stop_loss': 1.0835231345753997, 'take_profit': 1.0967137308492005, 'position_size': 52.365}
+2026-07-13 19:03:52,017 | INFO | main | MT5 thought process: pattern=Bull_Flat direction=bull entry=1.08792 sl=1.08352 tp=1.09671

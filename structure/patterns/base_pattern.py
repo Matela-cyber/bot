@@ -53,6 +53,43 @@ class BasePattern:
     def _line_value(self, slope: float, intercept: float, x: float) -> float:
         return float(slope * x + intercept)
 
+    def _trendline_touches(
+        self,
+        swings: list[Any],
+        slope: float,
+        intercept: float,
+        tolerance: float = 0.0002,
+    ) -> int:
+        """Count swings that touch a trendline within tolerance."""
+        touches = 0
+        for swing in swings:
+            line_price = self._line_value(slope, intercept, self._point_index(swing))
+            if abs(self._point_price(swing) - line_price) <= tolerance:
+                touches += 1
+        return touches
+
+    def _is_breakout(
+        self,
+        frame: pd.DataFrame,
+        level: float,
+        direction: str,
+        atr: float | None = None,
+    ) -> tuple[bool, float]:
+        """Check breakout direction and return confirmation strength."""
+        if atr is None:
+            atr = self._atr(frame)
+
+        last_close = self._latest_close(frame)
+        if direction == "bull":
+            if last_close < level:
+                return False, 0.0
+        else:
+            if last_close > level:
+                return False, 0.0
+
+        strength = self._proximity_strength(level, last_close, atr)
+        return True, strength
+
     def _slope(self, points: list[Any]) -> float:
         return self._calculate_slope(points)
 

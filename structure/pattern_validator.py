@@ -1,6 +1,15 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypedDict, cast
+
+
+class SwingPoints(TypedDict, total=False):
+    highs: list[Any]
+    lows: list[Any]
+
+
+class PatternMetadata(TypedDict, total=False):
+    type: str
 
 
 class PatternValidator:
@@ -33,17 +42,19 @@ class PatternValidator:
         confidence += min(0.10, contraction * 0.5)
 
         swing_quality = 0.0
-        swing_points = pattern.get("swing_points") or {}
-        highs = swing_points.get("highs") or []  # type: ignore[assignment]
-        lows = swing_points.get("lows") or []  # type: ignore[assignment]
+        raw_swing_points = pattern.get("swing_points")
+        swing_points: SwingPoints = cast(SwingPoints, raw_swing_points) if isinstance(raw_swing_points, dict) else {}
+        highs = swing_points.get("highs", [])
+        lows = swing_points.get("lows", [])
         if len(highs) >= 2 and len(lows) >= 2:
             swing_quality += 0.08
         if len(highs) >= 3 and len(lows) >= 3:
             swing_quality += 0.06
         confidence += swing_quality
 
-        metadata = pattern.get("metadata") or {}
-        metadata_type = metadata.get("type") if isinstance(metadata, dict) else None
+        raw_metadata = pattern.get("metadata")
+        metadata: PatternMetadata = cast(PatternMetadata, raw_metadata) if isinstance(raw_metadata, dict) else {}
+        metadata_type = metadata.get("type")
         if metadata_type == "reversal":
             confidence += 0.04
         elif metadata_type == "continuation":

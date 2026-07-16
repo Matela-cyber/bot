@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any
 
 import pandas as pd
-import numpy as np
 
 from structure.patterns.base_pattern import BasePattern
 
@@ -116,10 +115,17 @@ class HeadAndShouldersPattern(BasePattern):
             "breakout_strength": breakout_strength,
         }
 
-    def _calculate_quality(self, left_shoulder, head, right_shoulder,
-                          left_trough, right_trough,
-                          neckline_slope: float, atr: float,
-                          breakout_strength: float) -> float:
+    def _calculate_quality(
+        self,
+        left_shoulder: Any,
+        head: Any,
+        right_shoulder: Any,
+        left_trough: Any,
+        right_trough: Any,
+        neckline_slope: float,
+        atr: float,
+        breakout_strength: float,
+    ) -> float:
         """Calculate pattern quality (0-1)."""
         quality = 0.50
 

@@ -6,12 +6,12 @@ import time
 from typing import Any
 
 from config import settings
-from data.ingestor import fetch_local_ohlcv
+from data.ingestor import fetch_local_ohlcv, fetch_mt5_ohlcv
 from data.preprocessor import prepare_ohlcv
 from db.repository import Repository
 from execution.mt5_client import MT5Client
-from execution.paper_trader import PaperTradeSimulator
 from falcon.engine import FalconEngine
+from notifications.telegram_sender import TelegramSender
 from risk.manager import RiskManager
 from structure.patterns import detect_patterns
 from structure.swing_detector import detect_swings
@@ -74,7 +74,18 @@ def run_cycle() -> None:
         except Exception as exc:  # pragma: no cover - runtime integration path
             logger.warning("Position monitoring failed: %s", exc)
 
-    data = fetch_local_ohlcv(days=90)
+    if settings.use_mt5_execution and mt5_client.is_configured():
+        try:
+            data = fetch_mt5_ohlcv(days=90, timeframe="15m")
+            logger.info("Fetched live 15m OHLCV from MT5")
+        except Exception as exc:  # pragma: no cover - runtime integration path
+            logger.warning("MT5 OHLCV fetch failed, falling back to synthetic data: %s", exc)
+            data = fetch_local_ohlcv(days=90)
+    else:
+        if settings.use_mt5_execution:
+            logger.warning("MT5 execution requested but MT5 is not configured; using synthetic OHLCV data")
+        data = fetch_local_ohlcv(days=90)
+
     frame = prepare_ohlcv(data)
     swings = detect_swings(frame)
     patterns = detect_patterns(frame, swings)
@@ -97,8 +108,39 @@ def run_cycle() -> None:
 
     engine = FalconEngine()
     trade_plan = engine.generate_trade_plan(frame, best_pattern)
+    telegram = TelegramSender(settings.telegram_token, settings.telegram_chat_id)
 
+    logger.info(
+        "Falcon questionnaire scores: overall=%.2f structure=%.2f confirmation=%.2f trend=%.2f volatility=%.2f risk_reward=%.2f mindset=%.2f",
+        trade_plan["falcon_scores"]["overall_score"],
+        trade_plan["falcon_scores"]["structure_score"],
+        trade_plan["falcon_scores"]["confirmation_score"],
+        trade_plan["falcon_scores"]["trend_score"],
+        trade_plan["falcon_scores"]["volatility_score"],
+        trade_plan["falcon_scores"]["risk_reward_score"],
+        trade_plan["falcon_scores"]["mindset_score"],
+    )
+
+    today = date.today()
     current_balance = float(settings.account_balance)
+    if settings.use_mt5_execution and mt5_client.is_configured():
+        try:
+            mt5_client.connect()
+            current_balance = mt5_client.get_balance()
+            logger.info("Using live MT5 account balance: %s", current_balance)
+        except Exception as exc:  # pragma: no cover - runtime integration path
+            logger.exception("Failed to fetch live MT5 balance: %s", exc)
+            logger.warning("Falling back to configured account balance for risk calculation")
+
+    daily_loss = repository.get_daily_loss(today)
+    risk_manager = RiskManager(account_balance=current_balance, daily_loss=daily_loss)
+    assessment = risk_manager.assess_trade(trade_plan)
+    trade_plan["position_size"] = round(assessment.position_size, 4)
+
+    risk_amount = current_balance * settings.risk_per_trade
+    risk_percentage = (risk_amount / current_balance) * 100 if current_balance > 0 else 0.0
+    logger.info("Risk: $%.2f (%.2f%% of $%.2f) daily_loss=%.2f", risk_amount, risk_percentage, current_balance, daily_loss)
+
     if not is_trade_entry_confident(best_pattern, trade_plan, settings.min_entry_confidence):
         trade_plan.setdefault("position_size", 0.0)
         logger.warning(
@@ -116,6 +158,9 @@ def run_cycle() -> None:
                 "stop_loss_zone": best_pattern.get("stop_loss_zone"),
                 "confidence": best_pattern.get("confidence", 0.0),
                 "candlestick_bonus": best_pattern.get("candlestick_bonus", False),
+                "candlestick_pattern": best_pattern.get("candlestick_pattern"),
+                "candlestick_priority": best_pattern.get("candlestick_priority"),
+                "candlestick_priority_bonus": best_pattern.get("candlestick_priority_bonus", 0.0),
                 "final_score": trade_plan.get("quality", 0.0),
                 "executed": False,
                 "result": execution_result["exit_reason"],
@@ -138,18 +183,27 @@ def run_cycle() -> None:
             "exit_reason": execution_result["exit_reason"],
             "rl_action_taken": execution_result["rl_action_taken"],
             "reward": execution_result["reward"],
+            "candlestick_bonus": best_pattern.get("candlestick_bonus", False),
+            "candlestick_pattern": best_pattern.get("candlestick_pattern"),
+            "candlestick_priority": best_pattern.get("candlestick_priority"),
+            "candlestick_priority_bonus": best_pattern.get("candlestick_priority_bonus", 0.0),
+            "falcon_overall_score": trade_plan["falcon_scores"]["overall_score"],
+            "falcon_report": trade_plan["falcon_scores"],
         }
 
         repository.add_trade(trade_payload)
+        daily_pnl = repository.get_daily_pnl(today)
+        daily_loss = repository.get_daily_loss(today)
         repository.upsert_daily_stat(
             {
-                "date": date.today().isoformat(),
+                "date": today.isoformat(),
                 "start_balance": current_balance,
                 "end_balance": current_balance + execution_result.get("pnl_amount", 0.0),
-                "daily_pnl": execution_result.get("pnl_amount", 0.0),
+                "daily_pnl": daily_pnl,
+                "daily_loss": daily_loss,
                 "drawdown_peak": 0.0,
                 "drawdown_percent": 0.0,
-                "halt_triggered": False,
+                "halt_triggered": daily_loss >= settings.daily_loss_limit * current_balance,
             }
         )
         return
@@ -167,7 +221,7 @@ def run_cycle() -> None:
     elif settings.use_mt5_execution:
         logger.warning("MT5 execution requested but MT5 is not configured; using configured account balance for risk calculation")
 
-    risk_manager = RiskManager(account_balance=current_balance)
+    risk_manager = RiskManager(account_balance=current_balance, daily_loss=daily_loss)
     assessment = risk_manager.assess_trade(trade_plan)
     trade_plan["position_size"] = round(assessment.position_size, 4)
 
@@ -223,13 +277,9 @@ def run_cycle() -> None:
             else:
                 logger.error("MT5 execution requested but MT5 live balance was unavailable; aborting live execution and not falling back.")
                 execution_result = _build_execution_result(frame, trade_plan, "mt5_unavailable", "none")
-        elif settings.use_paper_trading:
-            logger.info("No MT5 requested; using paper trading mode")
-            simulator = PaperTradeSimulator()
-            execution_result = simulator.execute_trade(frame, trade_plan)
         else:
-            logger.error("No execution mode available; skipping trade.")
-            execution_result = _build_execution_result(frame, trade_plan, "no_execution_mode", "none")
+            logger.error("MT5 execution requested but MT5 live balance was unavailable; aborting live execution.")
+            execution_result = _build_execution_result(frame, trade_plan, "mt5_unavailable", "none")
 
     repository.add_pattern_event(
         {
@@ -240,6 +290,8 @@ def run_cycle() -> None:
             "stop_loss_zone": best_pattern.get("stop_loss_zone"),
             "confidence": best_pattern.get("confidence", 0.0),
             "candlestick_bonus": best_pattern.get("candlestick_bonus", False),
+            "candlestick_pattern": best_pattern.get("candlestick_pattern"),
+            "candlestick_priority": best_pattern.get("candlestick_priority"),
             "final_score": trade_plan.get("quality", 0.0),
             "executed": assessment.allowed,
             "result": execution_result["exit_reason"],
@@ -262,18 +314,30 @@ def run_cycle() -> None:
         "exit_reason": execution_result["exit_reason"],
         "rl_action_taken": execution_result["rl_action_taken"],
         "reward": execution_result["reward"],
+        "candlestick_bonus": best_pattern.get("candlestick_bonus", False),
+        "candlestick_pattern": best_pattern.get("candlestick_pattern"),
+        "candlestick_priority": best_pattern.get("candlestick_priority"),
+        "candlestick_priority_bonus": best_pattern.get("candlestick_priority_bonus", 0.0),
+        "falcon_overall_score": trade_plan["falcon_scores"]["overall_score"],
+        "falcon_report": trade_plan["falcon_scores"],
     }
 
     repository.add_trade(trade_payload)
+    if settings.telegram_token and settings.telegram_chat_id:
+        telegram_message = telegram.compose_trade_alert(trade_plan, execution_result)
+        telegram.send(telegram_message)
+    daily_pnl = repository.get_daily_pnl(today)
+    daily_loss = repository.get_daily_loss(today)
     repository.upsert_daily_stat(
         {
-            "date": date.today().isoformat(),
+            "date": today.isoformat(),
             "start_balance": current_balance,
             "end_balance": current_balance + execution_result.get("pnl_amount", 0.0),
-            "daily_pnl": execution_result.get("pnl_amount", 0.0),
+            "daily_pnl": daily_pnl,
+            "daily_loss": daily_loss,
             "drawdown_peak": 0.0,
             "drawdown_percent": 0.0,
-            "halt_triggered": False,
+            "halt_triggered": daily_loss >= settings.daily_loss_limit * current_balance,
         }
     )
 

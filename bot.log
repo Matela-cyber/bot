@@ -243,3 +243,164 @@ RuntimeError: MT5 order failed with code 10018, comment=Market closed
 2026-07-13 19:03:52,016 | INFO | main | Risk: $2.09 (1.00% of $209.46)
 2026-07-13 19:03:52,016 | INFO | main | Trade plan ready: {'pattern_name': 'Bull_Flat', 'direction': 'bull', 'quality': 0.74, 'status': 'Moderate Confidence', 'breakout_level': 1.088311641222549, 'entry_price': 1.08792, 'stop_loss': 1.0835231345753997, 'take_profit': 1.0967137308492005, 'position_size': 52.365}
 2026-07-13 19:03:52,017 | INFO | main | MT5 thought process: pattern=Bull_Flat direction=bull entry=1.08792 sl=1.08352 tp=1.09671
+2026-07-14 10:26:00,510 | INFO | main | Bot started on localhost
+2026-07-14 10:26:00,511 | INFO | main | Starting bot cycle
+2026-07-14 10:26:07,604 | INFO | main | Monitoring 1 open position(s)
+2026-07-14 10:26:07,610 | INFO | main |    EURUSD BUY | Price: 1.13977 | PnL: +$0.84 (0.07%)
+2026-07-14 10:26:07,717 | INFO | main | No patterns detected
+2026-07-14 10:41:07,724 | INFO | main | Starting bot cycle
+2026-07-14 10:41:10,106 | INFO | main | No patterns detected
+2026-07-14 10:52:30,626 | INFO | main | Bot started on localhost
+2026-07-14 10:52:30,626 | INFO | main | Starting bot cycle
+2026-07-14 10:53:47,040 | INFO | main | Bot stopped by user
+2026-07-14 11:39:23,421 | INFO | main | Bot started on localhost
+2026-07-14 11:39:23,422 | INFO | main | Starting bot cycle
+2026-07-14 11:40:29,685 | INFO | main | Bot stopped by user
+2026-07-14 11:40:56,142 | INFO | main | Bot started on localhost
+2026-07-14 11:40:56,142 | INFO | main | Starting bot cycle
+2026-07-14 11:41:00,482 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-07-14 11:41:00,706 | INFO | main | No patterns detected
+2026-07-14 11:42:12,315 | INFO | main | Bot stopped by user
+2026-07-14 12:17:39,711 | INFO | main | Bot started on localhost
+2026-07-14 12:17:39,712 | INFO | main | Starting bot cycle
+2026-07-14 12:17:42,923 | WARNING | main | MT5 OHLCV fetch failed, falling back to synthetic data: Failed to fetch OHLCV after 3 attempts: MT5 initialization failed: (-2, 'Invalid number of arguments')
+2026-07-14 12:17:43,013 | INFO | main | No patterns detected
+2026-07-14 12:18:20,259 | INFO | main | Bot stopped by user
+2026-07-14 12:18:26,398 | INFO | main | Bot started on localhost
+2026-07-14 12:18:26,399 | INFO | main | Starting bot cycle
+2026-07-14 12:18:30,521 | WARNING | main | MT5 OHLCV fetch failed, falling back to synthetic data: Failed to fetch OHLCV after 3 attempts: MT5 initialization failed: (-2, 'Invalid number of arguments')
+2026-07-14 12:38:48,219 | INFO | main | Bot started on localhost
+2026-07-14 12:38:48,243 | INFO | main | Starting bot cycle
+2026-07-14 12:38:51,078 | WARNING | main | MT5 OHLCV fetch failed, falling back to synthetic data: Failed to fetch OHLCV after 3 attempts: MT5 initialization failed: (-2, 'Invalid number of arguments')
+2026-07-14 12:38:51,108 | INFO | main | Detected 1 pattern(s)
+2026-07-14 12:38:51,109 | INFO | main | Best pattern: Bull_Flag | confidence: 0.73
+2026-07-14 12:38:51,109 | INFO | main | Falcon questionnaire scores: overall=0.57 structure=0.81 confirmation=0.20 trend=0.51 volatility=0.35 risk_reward=0.87 mindset=0.63
+2026-07-14 12:38:53,950 | INFO | main | Using live MT5 account balance: 210.69
+2026-07-14 12:38:53,953 | INFO | main | Risk: $2.11 (1.00% of $210.69) daily_loss=0.00
+2026-07-14 12:38:53,954 | WARNING | main | Signal below minimum entry confidence 0.65; skipping execution.
+2026-07-14 12:41:42,430 | INFO | main | Bot stopped by user
+2026-07-14 12:42:14,059 | INFO | main | Bot started on localhost
+2026-07-14 12:42:14,060 | INFO | main | Starting bot cycle
+2026-07-14 12:42:16,373 | WARNING | main | MT5 OHLCV fetch failed, falling back to synthetic data: Failed to fetch OHLCV after 3 attempts: MT5 initialization failed: (-2, 'Invalid number of arguments')
+2026-07-14 12:42:16,394 | INFO | main | Detected 1 pattern(s)
+2026-07-14 12:42:16,394 | INFO | main | Best pattern: Bull_Flag | confidence: 0.73
+2026-07-14 12:42:16,395 | INFO | main | Falcon questionnaire scores: overall=0.57 structure=0.81 confirmation=0.20 trend=0.51 volatility=0.35 risk_reward=0.87 mindset=0.63
+2026-07-14 12:42:18,467 | INFO | main | Using live MT5 account balance: 210.69
+2026-07-14 12:42:18,469 | INFO | main | Risk: $2.11 (1.00% of $210.69) daily_loss=0.00
+2026-07-14 12:42:18,469 | WARNING | main | Signal below minimum entry confidence 0.65; skipping execution.
+2026-07-14 12:42:39,632 | INFO | main | Bot stopped by user
+2026-07-14 12:42:45,501 | INFO | main | Bot started on localhost
+2026-07-14 12:42:45,501 | INFO | main | Starting bot cycle
+2026-07-14 12:42:48,777 | WARNING | main | MT5 OHLCV fetch failed, falling back to synthetic data: Failed to fetch OHLCV after 3 attempts: MT5 initialization failed: (-2, 'Invalid number of arguments')
+2026-07-14 12:42:48,814 | INFO | main | Detected 1 pattern(s)
+2026-07-14 12:42:48,814 | INFO | main | Best pattern: Bull_Flag | confidence: 0.73
+2026-07-14 12:42:48,814 | INFO | main | Falcon questionnaire scores: overall=0.57 structure=0.81 confirmation=0.20 trend=0.51 volatility=0.35 risk_reward=0.87 mindset=0.63
+2026-07-14 12:43:53,258 | INFO | main | Bot stopped by user
+2026-07-14 12:46:21,956 | INFO | main | Bot started on localhost
+2026-07-14 12:46:21,957 | INFO | main | Starting bot cycle
+2026-07-14 12:46:24,544 | WARNING | main | MT5 OHLCV fetch failed, falling back to synthetic data: Failed to fetch OHLCV after 3 attempts: MT5 initialization failed: (-2, 'Invalid number of arguments')
+2026-07-14 12:46:24,569 | INFO | main | Detected 1 pattern(s)
+2026-07-14 12:46:24,570 | INFO | main | Best pattern: Bull_Flag | confidence: 0.73
+2026-07-14 12:46:24,570 | INFO | main | Falcon questionnaire scores: overall=0.57 structure=0.81 confirmation=0.20 trend=0.51 volatility=0.35 risk_reward=0.87 mindset=0.63
+2026-07-14 12:46:26,675 | INFO | main | Using live MT5 account balance: 210.69
+2026-07-14 12:46:26,679 | INFO | main | Risk: $2.11 (1.00% of $210.69) daily_loss=0.00
+2026-07-14 12:46:26,679 | WARNING | main | Signal below minimum entry confidence 0.65; skipping execution.
+2026-07-14 12:47:29,004 | INFO | main | Bot stopped by user
+2026-07-14 12:50:23,648 | INFO | main | Bot started on localhost
+2026-07-14 12:50:23,648 | INFO | main | Starting bot cycle
+2026-07-14 12:50:28,402 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-07-14 12:50:28,489 | INFO | main | No patterns detected
+2026-07-14 12:50:38,340 | INFO | main | Bot stopped by user
+2026-07-14 12:51:33,266 | INFO | main | Bot started on localhost
+2026-07-14 12:51:33,266 | INFO | main | Starting bot cycle
+2026-07-14 12:53:11,957 | INFO | main | Bot started on localhost
+2026-07-14 12:53:11,958 | INFO | main | Starting bot cycle
+2026-07-14 12:53:34,815 | INFO | main | Bot stopped by user
+2026-07-14 12:53:50,668 | INFO | main | Bot started on localhost
+2026-07-14 12:53:50,669 | INFO | main | Starting bot cycle
+2026-07-14 12:54:58,494 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-07-14 12:54:58,880 | INFO | main | No patterns detected
+2026-07-14 13:09:58,884 | INFO | main | Starting bot cycle
+2026-07-14 13:11:06,585 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-07-14 13:11:06,808 | INFO | main | No patterns detected
+2026-07-14 13:26:06,810 | INFO | main | Starting bot cycle
+2026-07-14 13:26:11,999 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-07-14 13:26:12,258 | INFO | main | No patterns detected
+2026-07-14 13:41:12,276 | INFO | main | Starting bot cycle
+2026-07-14 13:41:18,508 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-07-14 13:41:18,772 | INFO | main | No patterns detected
+2026-07-15 12:33:11,298 | INFO | main | Starting bot cycle
+2026-07-15 12:33:11,391 | INFO | main | Detected 1 pattern(s)
+2026-07-15 12:33:11,391 | INFO | main | Best pattern: Bull_Flag | confidence: 0.73
+2026-07-15 12:33:11,392 | INFO | main | Falcon questionnaire scores: overall=0.57 structure=0.81 confirmation=0.20 trend=0.51 volatility=0.35 risk_reward=0.87 mindset=0.63
+2026-07-15 12:33:11,394 | INFO | main | Risk: $10.00 (1.00% of $1000.00) daily_loss=0.00
+2026-07-15 12:33:11,395 | WARNING | main | Signal below minimum entry confidence 0.65; skipping execution.
+2026-07-15 12:33:49,960 | INFO | main | Starting bot cycle
+2026-07-15 12:33:49,983 | INFO | main | Detected 1 pattern(s)
+2026-07-15 12:33:49,983 | INFO | main | Best pattern: Bull_Flag | confidence: 0.73
+2026-07-15 12:33:49,984 | INFO | main | Falcon questionnaire scores: overall=0.57 structure=0.81 confirmation=0.20 trend=0.51 volatility=0.35 risk_reward=0.87 mindset=0.63
+2026-07-15 12:33:49,985 | INFO | main | Risk: $10.00 (1.00% of $1000.00) daily_loss=0.00
+2026-07-15 12:33:49,985 | WARNING | main | Signal below minimum entry confidence 0.65; skipping execution.
+2026-07-15 12:34:14,180 | INFO | main | Starting bot cycle
+2026-07-15 12:34:14,205 | INFO | main | Detected 1 pattern(s)
+2026-07-15 12:34:14,205 | INFO | main | Best pattern: Bull_Flag | confidence: 0.73
+2026-07-15 12:34:14,205 | INFO | main | Falcon questionnaire scores: overall=0.57 structure=0.81 confirmation=0.20 trend=0.51 volatility=0.35 risk_reward=0.87 mindset=0.63
+2026-07-15 12:34:14,206 | INFO | main | Risk: $10.00 (1.00% of $1000.00) daily_loss=0.00
+2026-07-15 12:34:14,207 | WARNING | main | Signal below minimum entry confidence 0.65; skipping execution.
+2026-07-15 12:34:32,973 | INFO | main | Starting bot cycle
+2026-07-15 12:34:33,001 | INFO | main | Detected 1 pattern(s)
+2026-07-15 12:34:33,001 | INFO | main | Best pattern: Bull_Flag | confidence: 0.73
+2026-07-15 12:34:33,001 | INFO | main | Falcon questionnaire scores: overall=0.57 structure=0.81 confirmation=0.20 trend=0.51 volatility=0.35 risk_reward=0.87 mindset=0.63
+2026-07-15 12:34:33,002 | INFO | main | Risk: $10.00 (1.00% of $1000.00) daily_loss=0.00
+2026-07-15 12:34:33,002 | WARNING | main | Signal below minimum entry confidence 0.65; skipping execution.
+2026-07-15 12:36:21,969 | INFO | main | Starting bot cycle
+2026-07-15 12:36:22,002 | INFO | main | Detected 1 pattern(s)
+2026-07-15 12:36:22,002 | INFO | main | Best pattern: Bull_Flag | confidence: 0.73
+2026-07-15 12:36:22,002 | INFO | main | Falcon questionnaire scores: overall=0.57 structure=0.81 confirmation=0.20 trend=0.51 volatility=0.35 risk_reward=0.87 mindset=0.63
+2026-07-15 12:36:22,003 | INFO | main | Risk: $10.00 (1.00% of $1000.00) daily_loss=0.00
+2026-07-15 12:36:22,003 | WARNING | main | Signal below minimum entry confidence 0.65; skipping execution.
+2026-07-15 12:44:37,679 | INFO | main | Starting bot cycle
+2026-07-15 12:44:47,785 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-07-15 12:44:47,993 | INFO | main | No patterns detected
+2026-07-15 12:47:14,076 | INFO | main | Bot started on localhost
+2026-07-15 12:47:14,077 | INFO | main | Starting bot cycle
+2026-07-15 12:47:20,038 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-07-15 12:47:20,168 | INFO | main | No patterns detected
+2026-07-15 13:02:20,170 | INFO | main | Starting bot cycle
+2026-07-15 13:02:24,362 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-07-15 13:02:24,553 | INFO | main | No patterns detected
+2026-07-15 13:17:24,569 | INFO | main | Starting bot cycle
+2026-07-15 13:17:29,480 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-07-15 13:17:29,778 | INFO | main | No patterns detected
+2026-07-15 13:32:29,781 | INFO | main | Starting bot cycle
+2026-07-15 13:32:34,131 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-07-15 13:32:34,287 | INFO | main | No patterns detected
+2026-07-15 13:47:34,290 | INFO | main | Starting bot cycle
+2026-07-15 13:47:39,634 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-07-15 13:47:40,105 | INFO | main | No patterns detected
+2026-07-15 14:02:40,108 | INFO | main | Starting bot cycle
+2026-07-15 14:02:45,955 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-07-15 14:02:46,317 | INFO | main | No patterns detected
+2026-07-15 14:17:46,320 | INFO | main | Starting bot cycle
+2026-07-15 14:17:51,604 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-07-15 14:17:51,921 | INFO | main | No patterns detected
+2026-07-15 14:32:51,923 | INFO | main | Starting bot cycle
+2026-07-15 14:32:57,804 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-07-15 14:32:58,249 | INFO | main | No patterns detected
+2026-07-15 14:47:58,251 | INFO | main | Starting bot cycle
+2026-07-15 14:49:05,030 | WARNING | main | Position monitoring failed: MT5 initialization failed: (-10005, 'IPC timeout')
+2026-07-15 14:52:24,233 | WARNING | main | MT5 OHLCV fetch failed, falling back to synthetic data: Failed to fetch OHLCV after 3 attempts: MT5 initialization failed: (-10005, 'IPC timeout')
+2026-07-15 14:52:24,385 | INFO | main | Detected 1 pattern(s)
+2026-07-15 14:52:24,389 | INFO | main | Best pattern: Bull_Flag | confidence: 0.73
+2026-07-15 14:52:24,399 | INFO | main | Falcon questionnaire scores: overall=0.57 structure=0.81 confirmation=0.20 trend=0.51 volatility=0.35 risk_reward=0.87 mindset=0.63
+2026-07-15 14:53:30,796 | ERROR | main | Failed to fetch live MT5 balance: MT5 initialization failed: (-10005, 'IPC timeout')
+Traceback (most recent call last):
+  File "C:\Users\Lenovo\Desktop\bot\main.py", line 128, in run_cycle
+    mt5_client.connect()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Lenovo\Desktop\bot\execution\mt5_client.py", line 42, in connect
+    raise RuntimeError(f"MT5 initialization failed: {mt5_module.last_error()}")
+RuntimeError: MT5 initialization failed: (-10005, 'IPC timeout')
+2026-07-15 14:53:30,926 | WARNING | main | Falling back to configured account balance for risk calculation
+2026-07-15 14:53:31,054 | INFO | main | Risk: $10.00 (1.00% of $1000.00) daily_loss=0.00
+2026-07-15 14:53:31,055 | WARNING | main | Signal below minimum entry confidence 0.65; skipping execution.

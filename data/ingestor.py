@@ -1,9 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
+
+from config import settings
+
+try:
+    import MetaTrader5 as mt5  # type: ignore[import]
+except ImportError:  # pragma: no cover - optional dependency
+    mt5 = None  # type: ignore[assignment]
 
 
 @dataclass
@@ -20,6 +28,17 @@ class DataIngestor:
         noise = np.sin(np.linspace(0, 8 * np.pi, points)) * 0.0004
         trend = np.where(np.arange(points) < points // 2, 0.00005, -0.00003)
         price = base + noise + trend
+
+        # Insert a reliable bull flag breakout structure into the tail of the synthetic series.
+        if points >= 150:
+            anchor = float(price[-151])
+            impulse = np.linspace(anchor, anchor + 0.0080, 20)
+            consolidation = impulse[-1] + np.linspace(-0.0012, -0.0003, 40)
+            consolidation = consolidation + np.sin(np.linspace(0, 4 * np.pi, 40)) * 0.00005
+            breakout = consolidation[-1] + np.linspace(0.0010, 0.0045, 35)
+            followthrough = breakout[-1] + np.linspace(0.0002, 0.0007, 15)
+            pattern_segment = np.concatenate([impulse, consolidation, breakout, followthrough])
+            price[-110:] = pattern_segment
 
         open_series = price.copy()
         close_series = price + np.where(np.arange(points) % 5 == 0, 0.00015, -0.00005)
@@ -56,16 +75,86 @@ class DataIngestor:
             raise ValueError("OHLCV frame contains invalid low values")
         return frame
 
+    def _require_mt5_module(self) -> Any:
+        if mt5 is None:
+            raise RuntimeError("MetaTrader5 is not installed. Install it to fetch real market data.")
+        return cast(Any, mt5)
+
+    def _resolve_mt5_timeframe(self) -> int:
+        mt5_module = self._require_mt5_module()
+        mapping: dict[str, int] = {
+            "1m": mt5_module.TIMEFRAME_M1,
+            "5m": mt5_module.TIMEFRAME_M5,
+            "15m": mt5_module.TIMEFRAME_M15,
+            "15min": mt5_module.TIMEFRAME_M15,
+            "30m": mt5_module.TIMEFRAME_M30,
+            "30min": mt5_module.TIMEFRAME_M30,
+            "1h": mt5_module.TIMEFRAME_H1,
+            "1H": mt5_module.TIMEFRAME_H1,
+            "4h": mt5_module.TIMEFRAME_H4,
+            "1d": mt5_module.TIMEFRAME_D1,
+        }
+
+        if self.timeframe not in mapping:
+            raise ValueError(f"Unsupported timeframe for MT5 ingestion: {self.timeframe}")
+        return mapping[self.timeframe]
+
+    def _bars_per_day(self) -> int:
+        if self.timeframe in {"1m"}:
+            return 1440
+        if self.timeframe in {"5m"}:
+            return 288
+        if self.timeframe in {"15m", "15min"}:
+            return 96
+        if self.timeframe in {"30m", "30min"}:
+            return 48
+        if self.timeframe in {"1h", "1H"}:
+            return 24
+        if self.timeframe in {"4h", "4H"}:
+            return 6
+        if self.timeframe in {"1d", "1D"}:
+            return 1
+        raise ValueError(f"Unsupported timeframe for bar calculation: {self.timeframe}")
+
+    def _fetch_mt5_frame(self, days: int) -> pd.DataFrame:
+        mt5_module = self._require_mt5_module()
+        if not settings.mt5_account or not settings.mt5_password or not settings.mt5_server:
+            raise RuntimeError("MT5 credentials are not configured in .env")
+
+        if not mt5_module.initialize(
+            login=settings.mt5_account,
+            password=settings.mt5_password,
+            server=settings.mt5_server,
+        ):
+            raise RuntimeError(f"MT5 initialization failed: {mt5_module.last_error()}")
+
+        try:
+            bars = max(days, 1) * self._bars_per_day()
+            rates = mt5_module.copy_rates_from_pos("EURUSD", self._resolve_mt5_timeframe(), 0, bars)
+            if rates is None or len(rates) == 0:
+                raise RuntimeError("MT5 returned no OHLCV bars for EURUSD")
+
+            frame = pd.DataFrame(rates)
+            frame["time"] = pd.to_datetime(frame["time"], unit="s", utc=True)
+            frame = frame.set_index("time")[ ["open", "high", "low", "close", "tick_volume"] ]
+            frame = frame.rename(columns={"tick_volume": "volume"})
+            return self._validate_frame(frame)
+        finally:
+            mt5_module.shutdown()
+
     def fetch_ohlcv(self, days: int = 90, source: str = "local") -> pd.DataFrame:
         """Fetch OHLCV data from the configured source with retries and validation."""
-        if source != "local":
+        if source not in {"local", "mt5"}:
             raise ValueError(f"Unsupported data source: {source}")
 
         last_error: Exception | None = None
         for attempt in range(self.max_retries):
             try:
-                frame = self._build_synthetic_frame(days)
-                return self._validate_frame(frame)
+                if source == "local":
+                    frame = self._build_synthetic_frame(days)
+                else:
+                    frame = self._fetch_mt5_frame(days)
+                return frame
             except Exception as exc:  # pragma: no cover - resilience path
                 last_error = exc
                 if attempt == self.max_retries - 1:
@@ -75,3 +164,7 @@ class DataIngestor:
 
 def fetch_local_ohlcv(days: int = 90) -> pd.DataFrame:
     return DataIngestor().fetch_ohlcv(days=days, source="local")
+
+
+def fetch_mt5_ohlcv(days: int = 90, timeframe: str = "15m") -> pd.DataFrame:
+    return DataIngestor(timeframe=timeframe).fetch_ohlcv(days=days, source="mt5")

@@ -4,8 +4,10 @@ from typing import Any
 
 import pandas as pd
 
+from config import settings
 from structure.candlestick_validator import analyze_candlestick_confirmation
 from structure.pattern_validator import PatternValidator
+from structure.patterns.base_pattern import BasePattern
 from structure.xgboost_validator import XGBoostValidator
 from structure.patterns.ascending_channel import AscendingChannelPattern
 from structure.patterns.bear_flat import BearFlatPattern
@@ -30,16 +32,6 @@ def _recent_trend(frame: pd.DataFrame, window: int = 15) -> float:
     return float(frame["close"].iloc[-1] - frame["close"].iloc[-window])
 
 
-def _trend_strength(frame: pd.DataFrame, windows: tuple[int, ...] = (20, 60)) -> float:
-    values: list[float] = []
-    for window in windows:
-        if len(frame) >= window:
-            values.append(float(frame["close"].iloc[-1] - frame["close"].iloc[-window]))
-    if not values:
-        return 0.0
-    return float(sum(values) / len(values))
-
-
 def _range_contraction(frame: pd.DataFrame, window: int = 10) -> float:
     ranges = frame["high"] - frame["low"]
     if len(ranges) < window * 2:
@@ -50,7 +42,7 @@ def _range_contraction(frame: pd.DataFrame, window: int = 10) -> float:
 
 
 def detect_patterns(frame: pd.DataFrame, swings: dict[str, list[Any]]) -> list[dict[str, Any]]:
-    pattern_classes = [
+    pattern_classes: list[BasePattern] = [
         BullFlagPattern(),
         BearFlagPattern(),
         BullFlatPattern(),
@@ -69,7 +61,7 @@ def detect_patterns(frame: pd.DataFrame, swings: dict[str, list[Any]]) -> list[d
     ]
 
     validator = PatternValidator()
-    xgb_validator = XGBoostValidator()
+    xgb_validator = XGBoostValidator(model_path=settings.xgboost_model_path)
     results: list[dict[str, Any]] = []
     for detector in pattern_classes:
         pattern = detector.detect(frame, swings)
@@ -79,13 +71,17 @@ def detect_patterns(frame: pd.DataFrame, swings: dict[str, list[Any]]) -> list[d
         pattern["candlestick_confirmation"] = confirmation
         pattern["candlestick_strength"] = confirmation.strength
         pattern["candlestick_bonus"] = confirmation.confirmed
+        pattern["candlestick_pattern"] = confirmation.priority_pattern
+        pattern["candlestick_priority"] = confirmation.priority_level
+        pattern["candlestick_priority_bonus"] = confirmation.priority_bonus
         pattern["trend_strength"] = _recent_trend(frame)
         pattern["range_contraction"] = _range_contraction(frame)
         pattern["ml_score"] = xgb_validator.score(
             {
-                "direction": pattern.get("direction"),
+                "direction": 1.0 if pattern.get("direction") == "bull" else -1.0 if pattern.get("direction") == "bear" else 0.0,
                 "breakout_strength": pattern.get("breakout_strength"),
                 "candlestick_strength": confirmation.strength,
+                "candlestick_priority_bonus": pattern["candlestick_priority_bonus"],
                 "trend_strength": pattern["trend_strength"],
                 "range_contraction": pattern["range_contraction"],
             }

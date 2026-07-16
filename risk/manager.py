@@ -46,13 +46,17 @@ class RiskManager:
         position_size = max(0.0, position_size)
 
         daily_loss_limit = settings.daily_loss_limit * self.account_balance
-        if self.daily_loss >= daily_loss_limit:
-            return RiskAssessment(False, "daily_loss_limit", risk_amount, position_size, max_position_size, 0.0)
+        drawdown_limit = settings.drawdown_limit * self.account_balance
 
-        drawdown_fraction = (daily_loss_limit - self.daily_loss) / self.account_balance if self.account_balance else 0.0
-        if drawdown_fraction <= 0:
+        if self.daily_loss >= drawdown_limit:
+            drawdown_fraction = 0.0
             return RiskAssessment(False, "drawdown_limit", risk_amount, position_size, max_position_size, drawdown_fraction)
 
+        if self.daily_loss >= daily_loss_limit:
+            drawdown_fraction = max(0.0, (drawdown_limit - self.daily_loss) / self.account_balance)
+            return RiskAssessment(False, "daily_loss_limit", risk_amount, position_size, max_position_size, drawdown_fraction)
+
+        drawdown_fraction = max(0.0, (drawdown_limit - self.daily_loss) / self.account_balance)
         return RiskAssessment(True, "ok", risk_amount, position_size, max_position_size, drawdown_fraction)
 
     def position_size(self, entry_price: float, stop_loss_price: float) -> float:

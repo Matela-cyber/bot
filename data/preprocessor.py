@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 
-def prepare_ohlcv(data: pd.DataFrame) -> pd.DataFrame:
+def prepare_ohlcv(data: pd.DataFrame | None) -> pd.DataFrame:
     """Validate, normalize, and enrich OHLCV data for downstream analysis."""
     if data is None or data.empty:
         raise ValueError("OHLCV data is empty")

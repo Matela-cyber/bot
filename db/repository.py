@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from contextlib import contextmanager
 from datetime import date, datetime
 from typing import Any, Iterator
@@ -19,12 +20,36 @@ class Repository:
         self._migrate_schema()
         self.Session = sessionmaker(bind=self.engine, future=True)
 
+    @staticmethod
+    def _update_float_attribute(instance: object, attr: str, value: Any, default: float = 0.0) -> None:
+        if value is None:
+            raw = getattr(instance, attr, default)
+            try:
+                new_value = float(raw)
+            except (TypeError, ValueError):
+                new_value = default
+        else:
+            try:
+                new_value = float(value)
+            except (TypeError, ValueError):
+                new_value = default
+        setattr(instance, attr, new_value)
+
+    @staticmethod
+    def _update_bool_attribute(instance: object, attr: str, value: Any, default: bool = False) -> None:
+        if value is None:
+            raw = getattr(instance, attr, default)
+            new_value = bool(raw)
+        else:
+            new_value = bool(value)
+        setattr(instance, attr, new_value)
+
     def _migrate_schema(self) -> None:
         with self.engine.connect() as conn:
             if self.engine.dialect.name != "sqlite":
                 return
 
-            required_columns = {
+            required_trade_columns = {
                 "pnl_amount": "FLOAT DEFAULT 0.0",
                 "pnl_percentage": "FLOAT DEFAULT 0.0",
                 "position_size": "FLOAT DEFAULT 0.0",
@@ -32,14 +57,35 @@ class Repository:
                 "rl_action_taken": "VARCHAR(20)",
                 "reward": "FLOAT DEFAULT 0.0",
                 "take_profit": "FLOAT DEFAULT 0.0",
+                "falcon_overall_score": "FLOAT DEFAULT 0.0",
+                "falcon_report": "TEXT",
+            }
+            required_pattern_columns = {
+                "candlestick_pattern": "VARCHAR(80)",
+                "candlestick_priority": "VARCHAR(20)",
+                "candlestick_priority_bonus": "FLOAT DEFAULT 0.0",
+            }
+            required_daily_stat_columns = {
+                "daily_loss": "FLOAT DEFAULT 0.0",
             }
 
             result = conn.execute(text("PRAGMA table_info(trades)"))
-            existing_columns = {row[1] for row in result.fetchall()}
-
-            for column_name, column_definition in required_columns.items():
-                if column_name not in existing_columns:
+            existing_trade_columns = {row[1] for row in result.fetchall()}
+            for column_name, column_definition in required_trade_columns.items():
+                if column_name not in existing_trade_columns:
                     conn.execute(text(f"ALTER TABLE trades ADD COLUMN {column_name} {column_definition}"))
+
+            result = conn.execute(text("PRAGMA table_info(pattern_events)"))
+            existing_pattern_columns = {row[1] for row in result.fetchall()}
+            for column_name, column_definition in required_pattern_columns.items():
+                if column_name not in existing_pattern_columns:
+                    conn.execute(text(f"ALTER TABLE pattern_events ADD COLUMN {column_name} {column_definition}"))
+
+            result = conn.execute(text("PRAGMA table_info(daily_stats)"))
+            existing_daily_stat_columns = {row[1] for row in result.fetchall()}
+            for column_name, column_definition in required_daily_stat_columns.items():
+                if column_name not in existing_daily_stat_columns:
+                    conn.execute(text(f"ALTER TABLE daily_stats ADD COLUMN {column_name} {column_definition}"))
             conn.commit()
 
     @contextmanager
@@ -54,6 +100,30 @@ class Repository:
             finally:
                 session.close()
 
+    def get_daily_stat(self, stat_date: date) -> DailyStat | None:
+        with self.session() as session:
+            return session.get(DailyStat, stat_date)
+
+    def get_daily_loss(self, stat_date: date) -> float:
+        with self.session() as session:
+            total_loss = session.execute(
+                text(
+                    "SELECT SUM(pnl_amount) FROM trades WHERE DATE(entry_time) = :date AND pnl_amount < 0.0"
+                ),
+                {"date": stat_date.isoformat()},
+            ).scalar()
+            if total_loss is None:
+                return 0.0
+            return abs(float(total_loss))
+
+    def get_daily_pnl(self, stat_date: date) -> float:
+        with self.session() as session:
+            total_pnl = session.execute(
+                text("SELECT SUM(pnl_amount) FROM trades WHERE DATE(entry_time) = :date"),
+                {"date": stat_date.isoformat()},
+            ).scalar()
+            return float(total_pnl or 0.0)
+
     def add_pattern_event(self, payload: dict[str, Any]) -> None:
         timestamp = payload.get("timestamp")
         if isinstance(timestamp, str):
@@ -67,6 +137,8 @@ class Repository:
             stop_loss_zone=float(payload.get("stop_loss_zone") or 0.0),
             ml_confidence=float(payload.get("confidence") or 0.0),
             candlestick_bonus=bool(payload.get("candlestick_bonus", False)),
+            candlestick_pattern=payload.get("candlestick_pattern"),
+            candlestick_priority=payload.get("candlestick_priority"),
             final_score=float(payload.get("final_score") or 0.0),
             executed=bool(payload.get("executed", False)),
             result=payload.get("result"),
@@ -82,6 +154,10 @@ class Repository:
         exit_time = payload.get("exit_time")
         if isinstance(exit_time, str):
             exit_time = datetime.fromisoformat(exit_time)
+
+        falcon_report = payload.get("falcon_report")
+        if isinstance(falcon_report, dict):
+            falcon_report = json.dumps(falcon_report)
 
         trade = Trade(
             trade_id=payload["trade_id"],
@@ -99,6 +175,8 @@ class Repository:
             exit_reason=payload.get("exit_reason"),
             rl_action_taken=payload.get("rl_action_taken"),
             reward=float(payload.get("reward") or 0.0),
+            falcon_overall_score=float(payload.get("falcon_overall_score") or 0.0),
+            falcon_report=falcon_report,
         )
         with self.session() as session:
             session.add(trade)
@@ -116,15 +194,17 @@ class Repository:
                     start_balance=float(payload.get("start_balance") or 0.0),
                     end_balance=float(payload.get("end_balance") or 0.0),
                     daily_pnl=float(payload.get("daily_pnl") or 0.0),
+                    daily_loss=float(payload.get("daily_loss") or 0.0),
                     drawdown_peak=float(payload.get("drawdown_peak") or 0.0),
                     drawdown_percent=float(payload.get("drawdown_percent") or 0.0),
                     halt_triggered=bool(payload.get("halt_triggered", False)),
                 )
                 session.add(existing)
             else:
-                existing.start_balance = float(payload.get("start_balance") or existing.start_balance)
-                existing.end_balance = float(payload.get("end_balance") or existing.end_balance)
-                existing.daily_pnl = float(payload.get("daily_pnl") or existing.daily_pnl)
-                existing.drawdown_peak = float(payload.get("drawdown_peak") or existing.drawdown_peak)
-                existing.drawdown_percent = float(payload.get("drawdown_percent") or existing.drawdown_percent)
-                existing.halt_triggered = bool(payload.get("halt_triggered", existing.halt_triggered))
+                self._update_float_attribute(existing, "start_balance", payload.get("start_balance"))
+                self._update_float_attribute(existing, "end_balance", payload.get("end_balance"))
+                self._update_float_attribute(existing, "daily_pnl", payload.get("daily_pnl"))
+                self._update_float_attribute(existing, "daily_loss", payload.get("daily_loss"))
+                self._update_float_attribute(existing, "drawdown_peak", payload.get("drawdown_peak"))
+                self._update_float_attribute(existing, "drawdown_percent", payload.get("drawdown_percent"))
+                self._update_bool_attribute(existing, "halt_triggered", payload.get("halt_triggered"), False)

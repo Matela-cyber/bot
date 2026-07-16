@@ -35,6 +35,16 @@ class PatternValidator:
         if pattern.get("candlestick_bonus"):
             confidence += 0.08
 
+        priority_bonus = min(0.15, max(0.0, float(pattern.get("candlestick_priority_bonus", 0.0))))
+        confidence += priority_bonus
+        priority_level = pattern.get("candlestick_priority")
+        if priority_level == "High":
+            confidence += 0.08
+        elif priority_level == "Medium":
+            confidence += 0.05
+        elif priority_level == "Low":
+            confidence += 0.03
+
         trend_strength = min(0.18, max(0.0, abs(float(pattern.get("trend_strength", 0.0))) * 0.5))
         confidence += trend_strength
 

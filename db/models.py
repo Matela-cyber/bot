@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Column, Date, DateTime, Integer, String, Float, Boolean
+from sqlalchemy import Column, Date, DateTime, Integer, String, Float, Boolean, Text
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -18,6 +18,9 @@ class PatternEvent(Base):
     stop_loss_zone = Column(Float)
     ml_confidence = Column(Float)
     candlestick_bonus = Column(Boolean, default=False)
+    candlestick_pattern = Column(String(80), nullable=True)
+    candlestick_priority = Column(String(20), nullable=True)
+    candlestick_priority_bonus = Column(Float, default=0.0)
     final_score = Column(Float)
     executed = Column(Boolean, default=False)
     result = Column(String(10))
@@ -40,6 +43,8 @@ class Trade(Base):
     exit_reason = Column(String(50))
     rl_action_taken = Column(String(20))
     reward = Column(Float)
+    falcon_overall_score = Column(Float, default=0.0)
+    falcon_report = Column(Text)
 
 
 class DailyStat(Base):
@@ -48,6 +53,7 @@ class DailyStat(Base):
     start_balance = Column(Float)
     end_balance = Column(Float)
     daily_pnl = Column(Float)
+    daily_loss = Column(Float, default=0.0)
     drawdown_peak = Column(Float)
     drawdown_percent = Column(Float)
     halt_triggered = Column(Boolean)

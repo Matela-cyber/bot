@@ -27,6 +27,7 @@ class Settings:
     mt5_server: str | None = os.getenv("MT5_SERVER")
     telegram_token: str | None = os.getenv("TELEGRAM_TOKEN")
     telegram_chat_id: str | None = os.getenv("TELEGRAM_CHAT_ID")
+    xgboost_model_path: str | None = os.getenv("XGBOOST_MODEL_PATH")
     min_entry_confidence: float = float(os.getenv("MIN_ENTRY_CONFIDENCE", "0.65"))
 
     @property

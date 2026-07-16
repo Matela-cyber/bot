@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any
 
 import pandas as pd
-import numpy as np
 
 from structure.patterns.base_pattern import BasePattern
 
@@ -92,8 +91,15 @@ class DoubleBottomPattern(BasePattern):
             "breakout_strength": breakout_strength,
         }
 
-    def _calculate_quality(self, left_trough, right_trough, middle_peak,
-                          peak_height: float, breakout_strength: float, atr: float) -> float:
+    def _calculate_quality(
+        self,
+        left_trough: Any,
+        right_trough: Any,
+        middle_peak: Any,
+        peak_height: float,
+        breakout_strength: float,
+        atr: float,
+    ) -> float:
         """Calculate pattern quality (0-1)."""
         quality = 0.50
 

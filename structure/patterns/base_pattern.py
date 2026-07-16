@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -13,22 +13,32 @@ class BasePattern:
 
     name: str
     direction: str = "neutral"
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=lambda: cast(dict[str, Any], {}))
 
     def detect(self, frame: pd.DataFrame, swings: dict[str, list[Any]]) -> dict[str, Any] | None:
         raise NotImplementedError
 
     @staticmethod
-    def _point_price(point: Any) -> float:
+    def _point_price(point: dict[str, Any] | Any) -> float:
         if isinstance(point, dict):
-            return float(point.get("price", 0.0))
-        return float(getattr(point, "price", point))
+            point_dict = cast(dict[str, Any], point)
+            value: Any = point_dict["price"] if "price" in point_dict else 0.0
+        else:
+            value = getattr(point, "price", None)
+        if isinstance(value, (int, float, str)):
+            return float(value)
+        return 0.0
 
     @staticmethod
-    def _point_index(point: Any) -> float:
+    def _point_index(point: dict[str, Any] | Any) -> float:
         if isinstance(point, dict):
-            return float(point.get("index", 0))
-        return float(getattr(point, "index", 0))
+            point_dict = cast(dict[str, Any], point)
+            value: Any = point_dict["index"] if "index" in point_dict else 0
+        else:
+            value = getattr(point, "index", None)
+        if isinstance(value, (int, float, str)):
+            return float(value)
+        return 0.0
 
     @staticmethod
     def _calculate_slope(points: list[Any]) -> float:
@@ -130,6 +140,12 @@ class BasePattern:
     def _proximity_strength(self, target: float, value: float, atr: float) -> float:
         if atr <= 0:
             return 0.0
-        distance = abs(target - value)
-        normalized = max(0.0, 1.0 - distance / max(atr * 6.0, 1e-8))
-        return float(min(1.0, 0.15 + normalized * 0.35))
+
+        # Breakout strength favors closes above the level, and still provides a gradient
+        # when price is approaching the breakout level.
+        distance = value - target
+        if distance >= 0:
+            return float(min(1.0, 0.7 + 0.3 * min(1.0, distance / max(atr * 2.0, 1e-8))))
+
+        normalized = max(0.0, 1.0 - abs(distance) / max(atr * 2.0, 1e-8))
+        return float(max(0.0, 0.3 + normalized * 0.4))

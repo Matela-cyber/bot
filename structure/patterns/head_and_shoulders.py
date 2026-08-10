@@ -64,7 +64,7 @@ class HeadAndShouldersPattern(BasePattern):
 
         # Check 5: Neckline must be a valid trendline (slope not too steep)
         slope_neck, intercept_neck = self._fit_line([left_trough, right_trough])
-        if abs(slope_neck) > 0.0005:  # More than 5 pips per candle
+        if abs(slope_neck) > self._adaptive_slope_limit(frame):
             return None  # Neckline is too steep; not a valid H&S
 
         # Check 6: Breakout confirmation
@@ -79,7 +79,7 @@ class HeadAndShouldersPattern(BasePattern):
         # Check 7: Breakout strength
         atr = self._atr(frame)
         breakout_strength = self._proximity_strength(breakout_level, last_close, atr)
-        if breakout_strength < 0.6:
+        if breakout_strength < self._adaptive_breakout_threshold(frame):
             return None  # Too weak
 
         # Calculate stop-loss (above the head + ATR buffer)

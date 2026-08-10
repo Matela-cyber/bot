@@ -116,7 +116,7 @@ class DataIngestor:
             return 1
         raise ValueError(f"Unsupported timeframe for bar calculation: {self.timeframe}")
 
-    def _fetch_mt5_frame(self, days: int) -> pd.DataFrame:
+    def _fetch_mt5_frame(self, days: int, symbol: str = "EURUSD") -> pd.DataFrame:
         mt5_module = self._require_mt5_module()
         if not settings.mt5_account or not settings.mt5_password or not settings.mt5_server:
             raise RuntimeError("MT5 credentials are not configured in .env")
@@ -130,9 +130,9 @@ class DataIngestor:
 
         try:
             bars = max(days, 1) * self._bars_per_day()
-            rates = mt5_module.copy_rates_from_pos("EURUSD", self._resolve_mt5_timeframe(), 0, bars)
+            rates = mt5_module.copy_rates_from_pos(symbol, self._resolve_mt5_timeframe(), 0, bars)
             if rates is None or len(rates) == 0:
-                raise RuntimeError("MT5 returned no OHLCV bars for EURUSD")
+                raise RuntimeError(f"MT5 returned no OHLCV bars for {symbol}")
 
             frame = pd.DataFrame(rates)
             frame["time"] = pd.to_datetime(frame["time"], unit="s", utc=True)
@@ -142,7 +142,7 @@ class DataIngestor:
         finally:
             mt5_module.shutdown()
 
-    def fetch_ohlcv(self, days: int = 90, source: str = "local") -> pd.DataFrame:
+    def fetch_ohlcv(self, symbol: str = "EURUSD", days: int = 90, source: str = "local") -> pd.DataFrame:
         """Fetch OHLCV data from the configured source with retries and validation."""
         if source not in {"local", "mt5"}:
             raise ValueError(f"Unsupported data source: {source}")
@@ -153,7 +153,7 @@ class DataIngestor:
                 if source == "local":
                     frame = self._build_synthetic_frame(days)
                 else:
-                    frame = self._fetch_mt5_frame(days)
+                    frame = self._fetch_mt5_frame(days, symbol=symbol)
                 return frame
             except Exception as exc:  # pragma: no cover - resilience path
                 last_error = exc
@@ -162,9 +162,9 @@ class DataIngestor:
         raise RuntimeError(f"Unable to fetch OHLCV data: {last_error}")
 
 
-def fetch_local_ohlcv(days: int = 90) -> pd.DataFrame:
-    return DataIngestor().fetch_ohlcv(days=days, source="local")
+def fetch_local_ohlcv(days: int = 90, symbol: str = "EURUSD") -> pd.DataFrame:
+    return DataIngestor().fetch_ohlcv(symbol=symbol, days=days, source="local")
 
 
-def fetch_mt5_ohlcv(days: int = 90, timeframe: str = "15m") -> pd.DataFrame:
-    return DataIngestor(timeframe=timeframe).fetch_ohlcv(days=days, source="mt5")
+def fetch_mt5_ohlcv(days: int = 90, timeframe: str = "15m", symbol: str = "EURUSD") -> pd.DataFrame:
+    return DataIngestor(timeframe=timeframe).fetch_ohlcv(symbol=symbol, days=days, source="mt5")

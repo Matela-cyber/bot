@@ -16,14 +16,14 @@ class BullFlagPattern(BasePattern):
     def detect(self, frame: pd.DataFrame, swings: dict[str, list[Any]]) -> dict[str, Any] | None:
         highs = swings.get("highs", [])
         lows = swings.get("lows", [])
-        
+
         # Need enough swings for a valid flag
         if len(highs) < 3 or len(lows) < 3:
             return None
 
-        # Use the last 3-4 swings for detection
-        recent_highs = highs[-4:]
-        recent_lows = lows[-4:]
+        # Use the most recent swings scaled to timeframe and history
+        recent_highs = self._recent_swings(highs, frame)
+        recent_lows = self._recent_swings(lows, frame)
 
         # Determine the consolidation range and exclude the final breakout high when present.
         consolidation_highs = recent_highs[:-1] if len(recent_highs) >= 4 else recent_highs
@@ -40,16 +40,17 @@ class BullFlagPattern(BasePattern):
         # Check 2: Flag should be relatively flat or slightly descending
         high_slope, _ = self._fit_line(consolidation_highs)
         low_slope, _ = self._fit_line(consolidation_lows)
-        if high_slope > 0.00018 or low_slope > 0.00018:
+        if high_slope > self._adaptive_slope_limit(frame) or low_slope > self._adaptive_slope_limit(frame):
             return None  # Not a valid flag channel
 
-        # Check 3: Flag duration (at least 5 candles between first and last swing)
-        if len(frame) < 10:
+        # Check 3: Flag duration should scale to the timeframe
+        if len(frame) < self._minimum_pattern_candles(frame):
             return None  # Too short to be a flag
 
         # Check 4: Flag must be contained (width reasonable compared to ATR)
         flag_width = max(self._point_price(h) for h in consolidation_highs) - min(self._point_price(l) for l in consolidation_lows)
-        if flag_width > atr * 35:
+        # Allow larger flags on pairs with larger absolute moves; relax strict multiplier
+        if flag_width > max(self._adaptive_channel_width(frame) * 40, atr * 20):
             return None  # Too wide; not a flag
 
         # Check 5: Breakout confirmation using the breakout swing high
@@ -61,7 +62,7 @@ class BullFlagPattern(BasePattern):
             return None  # No breakout yet; wait for confirmation
 
         # Check 6: Breakout strength
-        if breakout_strength < 0.35:
+        if breakout_strength < self._adaptive_breakout_threshold(frame):
             return None  # Too weak
 
         # Calculate stop-loss (below the lowest low - ATR buffer)
@@ -70,9 +71,12 @@ class BullFlagPattern(BasePattern):
 
         # Calculate quality score
         quality = self._calculate_quality(
-            recent_highs, recent_lows, 
-            impulse, flag_width, atr, 
-            breakout_strength
+            recent_highs,
+            recent_lows,
+            impulse,
+            flag_width,
+            atr,
+            breakout_strength,
         )
 
         return {
@@ -108,8 +112,15 @@ class BullFlagPattern(BasePattern):
 
         return max_impulse
 
-    def _calculate_quality(self, highs: list[Any], lows: list[Any], impulse: float, 
-                          flag_width: float, atr: float, breakout_strength: float) -> float:
+    def _calculate_quality(
+        self,
+        highs: list[Any],
+        lows: list[Any],
+        impulse: float,
+        flag_width: float,
+        atr: float,
+        breakout_strength: float,
+    ) -> float:
         """Calculate pattern quality (0-1)."""
         quality = 0.50
 

@@ -29,6 +29,7 @@ class PatternEvent(Base):
 class Trade(Base):
     __tablename__ = "trades"
     trade_id = Column(String(36), primary_key=True)
+    symbol = Column(String(10), nullable=False, default="EURUSD")
     entry_time = Column(DateTime)
     exit_time = Column(DateTime)
     direction = Column(String(4))
@@ -40,7 +41,12 @@ class Trade(Base):
     pnl_amount = Column(Float)
     pnl_percentage = Column(Float)
     position_size = Column(Float)
-    exit_reason = Column(String(50))
+    pattern_name = Column(String(50), nullable=True)
+    falcon_scores = Column(Text, nullable=True)
+    mae_pips = Column(Integer, default=0)
+    mfe_pips = Column(Integer, default=0)
+    hold_time_minutes = Column(Integer, default=0)
+    exit_reason = Column(String(20))
     rl_action_taken = Column(String(20))
     reward = Column(Float)
     falcon_overall_score = Column(Float, default=0.0)

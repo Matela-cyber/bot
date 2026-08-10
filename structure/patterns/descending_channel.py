@@ -22,8 +22,8 @@ class DescendingChannelPattern(BasePattern):
             return None
 
         # Use the last 3-4 swings for detection
-        recent_highs = highs[-4:]
-        recent_lows = lows[-4:]
+        recent_highs = self._recent_swings(highs, frame)
+        recent_lows = self._recent_swings(lows, frame)
 
         # Check 1: Both slopes must be NEGATIVE (descending)
         slope_high, intercept_high = self._fit_line(recent_highs)
@@ -37,26 +37,20 @@ class DescendingChannelPattern(BasePattern):
             return None
 
         # Check 3: Verify touches on both trendlines
+        tolerance = self._adaptive_tolerance(frame)
+
         # At least 2 touches on resistance (highs hitting upper line)
-        resistance_touches = 0
-        for high in recent_highs:
-            trendline_value = self._line_value(slope_high, intercept_high, self._point_index(high))
-            if abs(self._point_price(high) - trendline_value) < 0.0002:  # Within 2 pips
-                resistance_touches += 1
+        resistance_touches = self._trendline_touches(recent_highs, slope_high, intercept_high, tolerance=tolerance)
 
         # At least 2 touches on support (lows hitting lower line)
-        support_touches = 0
-        for low in recent_lows:
-            trendline_value = self._line_value(slope_low, intercept_low, self._point_index(low))
-            if abs(self._point_price(low) - trendline_value) < 0.0002:
-                support_touches += 1
+        support_touches = self._trendline_touches(recent_lows, slope_low, intercept_low, tolerance=tolerance)
 
         if resistance_touches < 2 or support_touches < 2:
             return None  # Not enough touches to be a valid channel
 
-        # Check 4: Channel must have sufficient width (at least 5 pips)
+        # Check 4: Channel must have sufficient width relative to volatility
         channel_width = abs(intercept_high - intercept_low)
-        if channel_width < 0.0005:  # 5 pips minimum
+        if channel_width < self._adaptive_channel_width(frame):
             return None  # Too tight; not a meaningful channel
 
         # Check 5: Breakout confirmation
@@ -70,7 +64,7 @@ class DescendingChannelPattern(BasePattern):
         # Check 6: Breakout strength
         atr = self._atr(frame)
         breakout_strength = self._proximity_strength(breakout_level, last_close, atr)
-        if breakout_strength < 0.6:
+        if breakout_strength < self._adaptive_breakout_threshold(frame):
             return None  # Too weak
 
         # Calculate stop-loss (below the lower trendline + ATR buffer)

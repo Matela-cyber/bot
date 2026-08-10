@@ -21,9 +21,9 @@ class RisingWedgePattern(BasePattern):
         if len(highs) < 3 or len(lows) < 3:
             return None
 
-        # Use the last 3-4 swings for detection
-        recent_highs = highs[-4:]
-        recent_lows = lows[-4:]
+        # Use the most recent swings scaled to timeframe and history
+        recent_highs = self._recent_swings(highs, frame)
+        recent_lows = self._recent_swings(lows, frame)
 
         # Check 1: Both slopes must be POSITIVE (rising)
         high_slope, high_intercept = self._fit_line(recent_highs)
@@ -35,26 +35,27 @@ class RisingWedgePattern(BasePattern):
         if high_slope <= low_slope:
             return None  # Not converging
 
-        # Check 3: Verify touches on both trendlines
+        # Check 3: Verify touches on both trendlines using adaptive tolerance
+        tolerance = self._adaptive_tolerance(frame)
         # At least 2 touches on resistance (highs hitting upper line)
         resistance_touches = 0
         for high in recent_highs:
             trendline_value = self._line_value(high_slope, high_intercept, self._point_index(high))
-            if abs(self._point_price(high) - trendline_value) < 0.0002:  # Within 2 pips
+            if abs(self._point_price(high) - trendline_value) <= tolerance:
                 resistance_touches += 1
 
         # At least 2 touches on support (lows hitting lower line)
         support_touches = 0
         for low in recent_lows:
             trendline_value = self._line_value(low_slope, low_intercept, self._point_index(low))
-            if abs(self._point_price(low) - trendline_value) < 0.0002:
+            if abs(self._point_price(low) - trendline_value) <= tolerance:
                 support_touches += 1
 
         if resistance_touches < 2 or support_touches < 2:
             return None  # Not enough touches
 
-        # Check 4: Wedge must have sufficient duration (at least 10 candles)
-        if len(frame) < 10:
+        # Check 4: Wedge must have sufficient duration
+        if len(frame) < self._minimum_pattern_candles(frame):
             return None  # Too short to be a wedge
 
         # Check 5: Wedge must have sufficient width (at least 3 pips)
@@ -62,7 +63,7 @@ class RisingWedgePattern(BasePattern):
         upper_trendline = self._line_value(high_slope, high_intercept, current_index)
         lower_trendline = self._line_value(low_slope, low_intercept, current_index)
         wedge_width = abs(upper_trendline - lower_trendline)
-        if wedge_width < 0.0003:  # 3 pips minimum
+        if wedge_width < self._adaptive_channel_width(frame):
             return None  # Too tight; not a meaningful wedge
 
         # Check 6: Breakout confirmation
@@ -76,7 +77,7 @@ class RisingWedgePattern(BasePattern):
         # Check 7: Breakout strength
         atr = self._atr(frame)
         breakout_strength = self._proximity_strength(breakout_level, last_close, atr)
-        if breakout_strength < 0.6:
+        if breakout_strength < self._adaptive_breakout_threshold(frame):
             return None  # Too weak
 
         # Calculate stop-loss (above the upper trendline + ATR buffer)

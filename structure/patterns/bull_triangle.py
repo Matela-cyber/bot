@@ -22,8 +22,8 @@ class BullTrianglePattern(BasePattern):
             return None
 
         # Use the last 3-4 swings for detection
-        recent_highs = highs[-4:]
-        recent_lows = lows[-4:]
+        recent_highs = self._recent_swings(highs, frame)
+        recent_lows = self._recent_swings(lows, frame)
 
         # Check 1: Resistance is FLAT (slope ~ 0)
         high_slope, high_intercept = self._fit_line(recent_highs)
@@ -36,30 +36,20 @@ class BullTrianglePattern(BasePattern):
             return None  # Support is not rising
 
         # Check 3: Support slope should be moderate (not too steep)
-        if low_slope > 0.0005:  # More than 5 pips per candle
+        if low_slope > self._adaptive_slope_limit(frame):
             return None  # Too steep; this is a channel, not a triangle
 
         # Check 4: Verify touches on both trendlines
-        # At least 2 touches on resistance
-        resistance_touches = 0
-        for high in recent_highs:
-            trendline_value = self._line_value(high_slope, high_intercept, self._point_index(high))
-            if abs(self._point_price(high) - trendline_value) < 0.0002:  # Within 2 pips
-                resistance_touches += 1
-
-        # At least 2 touches on support
-        support_touches = 0
-        for low in recent_lows:
-            trendline_value = self._line_value(low_slope, low_intercept, self._point_index(low))
-            if abs(self._point_price(low) - trendline_value) < 0.0002:
-                support_touches += 1
+        tolerance = self._adaptive_tolerance(frame)
+        resistance_touches = self._trendline_touches(recent_highs, high_slope, high_intercept, tolerance=tolerance)
+        support_touches = self._trendline_touches(recent_lows, low_slope, low_intercept, tolerance=tolerance)
 
         if resistance_touches < 2 or support_touches < 2:
             return None  # Not enough touches
 
         # Check 5: Triangle must have sufficient width (at least 5 pips)
         triangle_width = abs(high_intercept - low_intercept)
-        if triangle_width < 0.0005:  # 5 pips minimum
+        if triangle_width < self._adaptive_channel_width(frame):
             return None  # Too tight; not a meaningful triangle
 
         # Check 6: Breakout confirmation
@@ -73,7 +63,7 @@ class BullTrianglePattern(BasePattern):
         # Check 7: Breakout strength
         atr = self._atr(frame)
         breakout_strength = self._proximity_strength(breakout_level, last_close, atr)
-        if breakout_strength < 0.6:
+        if breakout_strength < self._adaptive_breakout_threshold(frame):
             return None  # Too weak
 
         # Calculate stop-loss (below the lowest low - ATR buffer)

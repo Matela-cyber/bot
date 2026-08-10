@@ -53,7 +53,12 @@ class Repository:
                 "pnl_amount": "FLOAT DEFAULT 0.0",
                 "pnl_percentage": "FLOAT DEFAULT 0.0",
                 "position_size": "FLOAT DEFAULT 0.0",
-                "exit_reason": "VARCHAR(50)",
+                "pattern_name": "VARCHAR(50)",
+                "falcon_scores": "TEXT",
+                "mae_pips": "INTEGER DEFAULT 0",
+                "mfe_pips": "INTEGER DEFAULT 0",
+                "hold_time_minutes": "INTEGER DEFAULT 0",
+                "exit_reason": "VARCHAR(20)",
                 "rl_action_taken": "VARCHAR(20)",
                 "reward": "FLOAT DEFAULT 0.0",
                 "take_profit": "FLOAT DEFAULT 0.0",
@@ -159,8 +164,13 @@ class Repository:
         if isinstance(falcon_report, dict):
             falcon_report = json.dumps(falcon_report)
 
+        falcon_scores = payload.get("falcon_scores")
+        if isinstance(falcon_scores, dict):
+            falcon_scores = json.dumps(falcon_scores)
+
         trade = Trade(
             trade_id=payload["trade_id"],
+            symbol=payload.get("symbol", "EURUSD"),
             entry_time=entry_time,
             exit_time=exit_time,
             direction=payload.get("direction", "neutral"),
@@ -172,6 +182,11 @@ class Repository:
             pnl_amount=float(payload.get("pnl_amount") or 0.0),
             pnl_percentage=float(payload.get("pnl_percentage") or 0.0),
             position_size=float(payload.get("position_size") or 0.0),
+            pattern_name=payload.get("pattern_name"),
+            falcon_scores=falcon_scores,
+            mae_pips=int(payload.get("mae_pips", 0)),
+            mfe_pips=int(payload.get("mfe_pips", 0)),
+            hold_time_minutes=int(payload.get("hold_time_minutes", 0)),
             exit_reason=payload.get("exit_reason"),
             rl_action_taken=payload.get("rl_action_taken"),
             reward=float(payload.get("reward") or 0.0),
@@ -208,3 +223,38 @@ class Repository:
                 self._update_float_attribute(existing, "drawdown_peak", payload.get("drawdown_peak"))
                 self._update_float_attribute(existing, "drawdown_percent", payload.get("drawdown_percent"))
                 self._update_bool_attribute(existing, "halt_triggered", payload.get("halt_triggered"), False)
+
+    def update_trade_exit(
+        self,
+        trade_id: str,
+        exit_price: float,
+        pnl: float,
+        pattern_name: str | None,
+        falcon_scores: dict[str, Any] | None,
+        mae: int,
+        mfe: int,
+        hold_time: int,
+        exit_reason: str,
+    ) -> None:
+        serialized_scores: str | None = None
+        if falcon_scores is not None:
+            serialized_scores = json.dumps(falcon_scores)
+
+        with self.session() as session:
+            trade = session.get(Trade, trade_id)
+            if trade is None:
+                raise ValueError(f"Trade {trade_id} not found")
+
+            trade.exit_price = float(exit_price)
+            trade.pnl_amount = float(pnl)
+            trade.exit_reason = exit_reason
+            trade.pattern_name = pattern_name
+            trade.falcon_scores = serialized_scores
+            trade.mae_pips = int(mae)
+            trade.mfe_pips = int(mfe)
+            trade.hold_time_minutes = int(hold_time)
+            trade.pnl_percentage = float((float(pnl) / float(trade.entry_price)) * 100) if trade.entry_price else 0.0
+
+    def get_trade_by_id(self, trade_id: str) -> Trade | None:
+        with self.session() as session:
+            return session.get(Trade, trade_id)

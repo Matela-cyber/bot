@@ -92,6 +92,13 @@ class SwingDetector:
         return {"highs": highs, "lows": lows}
 
 
-def detect_swings(frame: pd.DataFrame) -> dict[str, list[SwingPoint]]:
-    detector = SwingDetector()
-    return detector.detect(frame)
+def detect_swings(frame: pd.DataFrame) -> dict[str, list[Any]]:
+    try:
+        # Prefer the adaptive detector when available
+        from structure.adaptive_swing_detector import AdaptiveSwingDetector  # type: ignore
+
+        detector = AdaptiveSwingDetector()
+        return detector.detect(frame)
+    except Exception:
+        detector = SwingDetector()
+        return detector.detect(frame)

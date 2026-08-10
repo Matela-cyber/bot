@@ -21,9 +21,9 @@ class BullFlatPattern(BasePattern):
         if len(highs) < 3 or len(lows) < 3:
             return None
 
-        # Use the last 3-4 swings for detection
-        recent_highs = highs[-4:]
-        recent_lows = lows[-4:]
+        # Use the most recent swings scaled to timeframe and history
+        recent_highs = self._recent_swings(highs, frame)
+        recent_lows = self._recent_swings(lows, frame)
 
         # Check 1: Resistance is FLAT (slope ~ 0)
         high_slope, _ = self._fit_line(recent_highs)
@@ -35,8 +35,8 @@ class BullFlatPattern(BasePattern):
         if low_slope <= 0.0:
             return None
 
-        # Check 3: Consolidation period is sufficient (at least 10 candles between first and last swing)
-        if len(frame) < 10:
+        # Check 3: Consolidation period is sufficient
+        if len(frame) < self._minimum_pattern_candles(frame):
             return None
 
         # Check 4: Breakout confirmation
@@ -50,7 +50,7 @@ class BullFlatPattern(BasePattern):
         # Check 5: Breakout strength (price must close above resistance with momentum)
         atr = self._atr(frame)
         breakout_strength = self._proximity_strength(breakout_level, last_close, atr)
-        if breakout_strength < 0.6:  # Too weak
+        if breakout_strength < self._adaptive_breakout_threshold(frame):  # Too weak
             return None
 
         # Check 6: Ensure breakout candle has volume (or high volatility)

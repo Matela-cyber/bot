@@ -4,6 +4,7 @@ from typing import Any
 
 import pandas as pd
 
+from config import settings
 from falcon.questionnaire import FalconQuestionnaire
 
 
@@ -32,7 +33,9 @@ class FalconEngine:
         ).evaluate()
 
         quality = questionnaire["overall_score"]
-        status = self._grade_quality(quality)
+        confirmation_score = questionnaire["confirmation_score"]
+        eligible = self._is_trade_eligible(quality, confirmation_score)
+        status = self._grade_quality(quality, confirmation_score, eligible)
 
         return {
             "pattern_name": pattern.get("pattern_name"),
@@ -46,9 +49,18 @@ class FalconEngine:
             "falcon_scores": questionnaire,
         }
 
-    def _grade_quality(self, quality: float) -> str:
-        if quality >= 0.80:
+    def _is_trade_eligible(self, quality: float, confirmation_score: float) -> bool:
+        return (
+            quality >= settings.min_overall_score
+            and confirmation_score >= settings.min_confirmation
+        )
+
+    def _grade_quality(self, quality: float, confirmation_score: float, eligible: bool) -> str:
+        if not eligible:
+            return "Rejected"
+
+        if quality >= 0.80 and confirmation_score >= settings.min_confirmation:
             return "High Confidence"
-        if quality >= 0.65:
+        if quality >= settings.min_overall_score:
             return "Moderate Confidence"
         return "Risk Entry"

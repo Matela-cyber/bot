@@ -21,9 +21,9 @@ class BearFlagPattern(BasePattern):
         if len(highs) < 3 or len(lows) < 3:
             return None
 
-        # Use the last 3-4 swings for detection
-        recent_highs = highs[-4:]
-        recent_lows = lows[-4:]
+        # Use the most recent 3-4 swings scaled to timeframe and history
+        recent_highs = self._recent_swings(highs, frame)
+        recent_lows = self._recent_swings(lows, frame)
 
         # Check 1: Impulse down (at least 3x ATR or 5 pips)
         atr = self._atr(frame)
@@ -39,8 +39,8 @@ class BearFlagPattern(BasePattern):
         if slope_high <= 0.0 or slope_low <= 0.0:
             return None  # Not ascending
 
-        # Check 3: Flag duration (at least 5 candles between first and last swing)
-        if len(frame) < 10:
+        # Check 3: Flag duration should scale to the timeframe
+        if len(frame) < self._minimum_pattern_candles(frame):
             return None  # Too short to be a flag
 
         # Check 4: Flag must be contained (width <= 2x ATR)
@@ -58,7 +58,7 @@ class BearFlagPattern(BasePattern):
 
         # Check 6: Breakout strength
         breakout_strength = self._proximity_strength(breakout_level, last_close, atr)
-        if breakout_strength < 0.6:
+        if breakout_strength < self._adaptive_breakout_threshold(frame):
             return None  # Too weak
 
         # Calculate stop-loss (above the highest high + ATR buffer)

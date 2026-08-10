@@ -15,6 +15,42 @@ def test_risk_manager_assesses_daily_limit_and_position_size() -> None:
     assert assessment.position_size >= 0.0
 
 
+def test_risk_manager_halts_on_drawdown_limit() -> None:
+    manager = RiskManager(account_balance=1000.0, daily_loss=0.0)
+    allowed, reason = manager.check_limits(current_equity=850.0, peak_equity=1000.0)
+
+    assert allowed is False
+    assert reason == "overall_drawdown_limit"
+
+
+def test_risk_manager_rejects_trade_when_portfolio_risk_exceeds_limit() -> None:
+    class FakeMT5Client:
+        def get_open_positions(self) -> list[dict[str, Any]]:
+            return [
+                {
+                    "ticket": 1,
+                    "symbol": "EURUSD",
+                    "type": "buy",
+                    "entry_price": 1.1000,
+                    "sl": 1.0900,
+                    "tp": 1.1200,
+                    "current_price": 1.1000,
+                    "pnl": 0.0,
+                    "pnl_percent": 0.0,
+                    "volume": 3.0,
+                }
+            ]
+
+        def get_equity(self) -> float:
+            return 100000.0
+
+    manager = RiskManager(account_balance=1000.0, daily_loss=0.0)
+    approved, reason = manager.approve_trade("bull", FakeMT5Client())
+
+    assert approved is False
+    assert reason == "max_total_risk_percent"
+
+
 def test_mt5_client_uses_absolute_sl_tp_levels(monkeypatch) -> None:
     captured: list[dict] = []
 

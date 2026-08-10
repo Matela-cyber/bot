@@ -75,6 +75,65 @@ class MT5Client:
             raise RuntimeError(f"MT5 could not fetch tick data for {symbol}")
         return {"bid": float(tick.bid), "ask": float(tick.ask)}
 
+    def get_atr(self, symbol: str, period: int = 14) -> float:
+        self.connect()
+        mt5_module = self._require_mt5()
+
+        ticks = mt5_module.copy_rates_from_pos(symbol, mt5_module.TIMEFRAME_M15, 0, period + 1)
+        if not ticks or len(ticks) < period + 1:
+            raise RuntimeError(f"MT5 could not fetch enough OHLCV bars for ATR on {symbol}")
+
+        true_ranges: list[float] = []
+        for i in range(1, len(ticks)):
+            high = float(ticks[i].high)
+            low = float(ticks[i].low)
+            prev_close = float(ticks[i - 1].close)
+            true_range = max(high - low, abs(high - prev_close), abs(low - prev_close))
+            true_ranges.append(true_range)
+
+        if not true_ranges:
+            raise RuntimeError("ATR calculation failed due to missing range data")
+
+        return sum(true_ranges[-period:]) / float(period)
+
+    def validate_price_levels(
+        self,
+        entry: float,
+        sl: float,
+        tp: float,
+        direction: str,
+        symbol: str,
+    ) -> tuple[float, float, float]:
+        self.connect()
+        mt5_module = self._require_mt5()
+        tick = mt5_module.symbol_info_tick(symbol)
+        if tick is None:
+            raise RuntimeError(f"MT5 could not fetch tick data for {symbol}")
+
+        live_price = float(tick.ask) if direction.lower() == "buy" else float(tick.bid)
+        if abs(entry - live_price) <= 0.0005:
+            return entry, sl, tp
+
+        atr = self.get_atr(symbol)
+        if direction.lower() == "buy":
+            new_sl = live_price - atr * 1.5
+            new_tp = live_price + atr * 3.0
+        else:
+            new_sl = live_price + atr * 1.5
+            new_tp = live_price - atr * 3.0
+
+        logger.info(
+            "Validating stale price levels for %s: live=%s entry=%s sl=%s tp=%s recalculated_sl=%s recalculated_tp=%s",
+            symbol,
+            live_price,
+            entry,
+            sl,
+            tp,
+            new_sl,
+            new_tp,
+        )
+        return live_price, new_sl, new_tp
+
     def _round_price_to_point(self, price: float, point: float, digits: int | None = None) -> float:
         if point <= 0:
             return round(price, digits or 10)

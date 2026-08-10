@@ -21,9 +21,9 @@ class ExpandingTrianglePattern(BasePattern):
         if len(highs) < 3 or len(lows) < 3:
             return None
 
-        # Use the last 3-4 swings for detection
-        recent_highs = highs[-4:]
-        recent_lows = lows[-4:]
+        # Use the most recent swings scaled to timeframe and history
+        recent_highs = self._recent_swings(highs, frame)
+        recent_lows = self._recent_swings(lows, frame)
 
         # Check 1: Highs are RISING (slope > 0)
         high_slope, high_intercept = self._fit_line(recent_highs)
@@ -35,30 +35,29 @@ class ExpandingTrianglePattern(BasePattern):
         if low_slope >= 0.0:
             return None  # Not expanding
 
-        # Check 3: Verify touches on both trendlines
-        # At least 2 touches on resistance (highs hitting upper line)
+        # Check 3: Verify touches on both trendlines (use adaptive tolerance)
+        tolerance = self._adaptive_tolerance(frame)
         resistance_touches = 0
         for high in recent_highs:
             trendline_value = self._line_value(high_slope, high_intercept, self._point_index(high))
-            if abs(self._point_price(high) - trendline_value) < 0.0002:  # Within 2 pips
+            if abs(self._point_price(high) - trendline_value) <= tolerance:
                 resistance_touches += 1
 
-        # At least 2 touches on support (lows hitting lower line)
         support_touches = 0
         for low in recent_lows:
             trendline_value = self._line_value(low_slope, low_intercept, self._point_index(low))
-            if abs(self._point_price(low) - trendline_value) < 0.0002:
+            if abs(self._point_price(low) - trendline_value) <= tolerance:
                 support_touches += 1
 
         if resistance_touches < 2 or support_touches < 2:
             return None  # Not enough touches
 
-        # Check 4: Triangle must have sufficient width (at least 5 pips)
+        # Check 4: Triangle must have sufficient width
         current_index = len(frame) - 1
         upper_trendline = self._line_value(high_slope, high_intercept, current_index)
         lower_trendline = self._line_value(low_slope, low_intercept, current_index)
         triangle_width = abs(upper_trendline - lower_trendline)
-        if triangle_width < 0.0005:  # 5 pips minimum
+        if triangle_width < self._adaptive_channel_width(frame):
             return None  # Too tight; not a meaningful triangle
 
         # Check 5: Breakout confirmation
@@ -80,7 +79,7 @@ class ExpandingTrianglePattern(BasePattern):
 
         # Check 6: Breakout strength
         breakout_strength = self._proximity_strength(breakout_level, last_close, atr)
-        if breakout_strength < 0.6:
+        if breakout_strength < self._adaptive_breakout_threshold(frame):
             return None  # Too weak
 
         # Calculate quality

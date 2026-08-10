@@ -57,7 +57,7 @@ class DoubleBottomPattern(BasePattern):
         # Check breakout strength
         atr = self._atr(frame)
         breakout_strength = self._proximity_strength(breakout_level, last_close, atr)
-        if breakout_strength < 0.6:
+        if breakout_strength < self._adaptive_breakout_threshold(frame):
             return None  # Too weak
 
         # Calculate stop-loss (below the lower trough - ATR buffer)

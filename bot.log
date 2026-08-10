@@ -404,3 +404,75 @@ RuntimeError: MT5 initialization failed: (-10005, 'IPC timeout')
 2026-07-15 14:53:30,926 | WARNING | main | Falling back to configured account balance for risk calculation
 2026-07-15 14:53:31,054 | INFO | main | Risk: $10.00 (1.00% of $1000.00) daily_loss=0.00
 2026-07-15 14:53:31,055 | WARNING | main | Signal below minimum entry confidence 0.65; skipping execution.
+2026-07-17 07:06:21,302 | INFO | main | Bot started on localhost
+2026-07-17 07:06:21,303 | INFO | main | Starting bot cycle
+2026-07-17 07:06:30,413 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-07-17 07:06:30,580 | INFO | main | No patterns detected
+2026-07-17 07:21:30,584 | INFO | main | Starting bot cycle
+2026-07-17 07:21:34,814 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-07-17 07:21:34,918 | INFO | main | No patterns detected
+2026-07-17 07:36:34,920 | INFO | main | Starting bot cycle
+2026-07-17 07:36:39,213 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-07-17 07:36:39,462 | INFO | main | No patterns detected
+2026-07-17 07:51:39,465 | INFO | main | Starting bot cycle
+2026-07-17 07:51:45,361 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-07-17 07:51:45,583 | INFO | main | No patterns detected
+2026-07-17 08:06:45,585 | INFO | main | Starting bot cycle
+2026-07-17 08:06:50,836 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-07-17 08:06:51,017 | INFO | main | No patterns detected
+2026-07-17 08:21:51,019 | INFO | main | Starting bot cycle
+2026-07-17 08:21:59,766 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-07-17 08:21:59,972 | INFO | main | Detected 2 pattern(s)
+2026-07-17 08:22:00,007 | INFO | main | Best pattern: Falling_Wedge | confidence: 0.77
+2026-07-17 08:22:00,014 | INFO | main | Falcon questionnaire scores: overall=0.61 structure=0.85 confirmation=0.35 trend=0.52 volatility=0.35 risk_reward=0.87 mindset=0.67
+2026-07-17 08:22:08,029 | INFO | main | Using live MT5 account balance: 210.69
+2026-07-17 08:22:08,092 | INFO | main | Risk: $2.11 (1.00% of $210.69) daily_loss=0.00
+2026-07-17 08:22:08,093 | WARNING | main | Signal below minimum entry confidence 0.65; skipping execution.
+2026-08-05 11:14:07,647 | INFO | main | Bot started on localhost
+2026-08-05 11:14:07,647 | INFO | main | Starting bot cycle
+2026-08-05 11:14:38,469 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-08-05 11:14:38,706 | INFO | main | No patterns detected
+2026-08-06 12:58:50,141 | INFO | main | Bot started on localhost
+2026-08-06 12:58:50,142 | INFO | main | Starting bot cycle
+2026-08-06 12:59:01,402 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-08-06 12:59:04,138 | INFO | main | Decision engine action=SKIP reason=low_confluence cycles=2
+2026-08-06 12:59:04,138 | INFO | main | Skipping trade: low_confluence
+2026-08-10 12:29:38,996 | INFO | main | Starting bot cycle
+2026-08-10 12:29:52,009 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-08-10 12:29:52,009 | INFO | main | Trading blocked: market_not_open_yet
+2026-08-10 12:33:34,926 | INFO | main | Starting bot cycle
+2026-08-10 12:33:40,099 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-08-10 12:33:43,982 | INFO | main | EURUSD: Decision engine action=SKIP reason=no_pattern cycles=0
+2026-08-10 12:33:43,982 | INFO | main | EURUSD: Decision engine returned SKIP
+2026-08-10 12:33:48,790 | INFO | main | GBPUSD: Decision engine action=HOLD reason=waiting_for_order_block_retest cycles=3
+2026-08-10 12:33:48,791 | INFO | main | GBPUSD: Decision engine returned HOLD
+2026-08-10 12:33:55,126 | INFO | main | USDJPY: Decision engine action=SKIP reason=no_pattern cycles=0
+2026-08-10 12:33:55,127 | INFO | main | USDJPY: Decision engine returned SKIP
+2026-08-10 12:34:20,985 | INFO | main | XAUUSD: Decision engine action=HOLD reason=waiting_for_order_block_retest cycles=3
+2026-08-10 12:34:20,986 | INFO | main | XAUUSD: Decision engine returned HOLD
+2026-08-10 12:34:20,986 | INFO | main | Portfolio summary: 0 positions, Daily PnL: $0.00
+2026-08-10 12:39:07,350 | INFO | main | Bot started on localhost
+2026-08-10 12:39:07,350 | INFO | main | Starting bot cycle
+2026-08-10 12:39:12,173 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-08-10 12:39:16,416 | INFO | main | EURUSD: Decision engine action=SKIP reason=no_pattern cycles=0
+2026-08-10 12:39:16,416 | INFO | main | EURUSD: Decision engine returned SKIP
+2026-08-10 12:39:18,659 | INFO | main | GBPUSD: Decision engine action=SKIP reason=no_pattern cycles=0
+2026-08-10 12:39:18,660 | INFO | main | GBPUSD: Decision engine returned SKIP
+2026-08-10 12:39:22,296 | INFO | main | USDJPY: Decision engine action=SKIP reason=no_pattern cycles=0
+2026-08-10 12:39:22,296 | INFO | main | USDJPY: Decision engine returned SKIP
+2026-08-10 12:39:25,267 | INFO | main | XAUUSD: Decision engine action=HOLD reason=waiting_for_multi_candle_ob_retest cycles=3
+2026-08-10 12:39:25,267 | INFO | main | XAUUSD: Decision engine returned HOLD
+2026-08-10 12:39:25,268 | INFO | main | Portfolio summary: 0 positions, Daily PnL: $0.00
+2026-08-10 12:54:35,645 | INFO | main | Bot started on localhost
+2026-08-10 12:54:35,645 | INFO | main | Starting bot cycle
+2026-08-10 12:54:39,827 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-08-10 12:54:41,917 | INFO | main | EURUSD: Decision engine action=SKIP reason=no_pattern cycles=0
+2026-08-10 12:54:41,918 | INFO | main | EURUSD: Decision engine returned SKIP
+2026-08-10 12:54:44,463 | INFO | main | GBPUSD: Decision engine action=SKIP reason=no_pattern cycles=0
+2026-08-10 12:54:44,463 | INFO | main | GBPUSD: Decision engine returned SKIP
+2026-08-10 12:54:47,086 | INFO | main | USDJPY: Decision engine action=SKIP reason=no_pattern cycles=0
+2026-08-10 12:54:47,086 | INFO | main | USDJPY: Decision engine returned SKIP
+2026-08-10 12:54:50,099 | INFO | main | XAUUSD: Decision engine action=HOLD reason=waiting_for_multi_candle_ob_retest cycles=3
+2026-08-10 12:54:50,099 | INFO | main | XAUUSD: Decision engine returned HOLD
+2026-08-10 12:54:50,100 | INFO | main | Portfolio summary: 0 positions, Daily PnL: $0.00
+2026-08-10 12:55:13,996 | INFO | main | Bot stopped by user

@@ -16,6 +16,7 @@ from filter.liquidity_filter import LowLiquidityFilter
 from filter.news_filter import NewsFilter
 from filter.trading_filter import TradingFilter
 from filter.weekend_filter import WeekendFilter
+from notifications.telegram_sender import TelegramSender
 from structure.swing_detector import detect_swings
 from strategic.decision_engine import StrategicDecisionEngine
 from utils.logger import get_logger
@@ -26,6 +27,7 @@ news_filter = NewsFilter()
 weekend_filter = WeekendFilter()
 liquidity_filter = LowLiquidityFilter()
 trading_filter = TradingFilter(news_filter, weekend_filter, liquidity_filter)
+telegram_sender = TelegramSender(settings.telegram_token, settings.telegram_chat_id)
 portfolio_manager = PortfolioManager({"TRADING_PAIRS": settings.trading_pairs})
 
 
@@ -218,6 +220,16 @@ def run_cycle() -> None:
                     "risk_amount": trade_plan["risk_amount"],
                 })
                 portfolio_manager.total_open_positions += 1
+
+                execution_result = {
+                    "exit_reason": "executed",
+                    "exit_time": frame.index[-1].to_pydatetime(),
+                }
+                alert_message = telegram_sender.compose_trade_alert(trade_plan, execution_result)
+                if telegram_sender.send(alert_message):
+                    logger.info("%s: Telegram alert sent", symbol)
+                else:
+                    logger.debug("%s: Telegram alert not sent (not configured or failed)", symbol)
             else:
                 logger.info("%s: Decision engine returned %s", symbol, action)
         except Exception as exc:

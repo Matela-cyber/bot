@@ -476,3 +476,16 @@ RuntimeError: MT5 initialization failed: (-10005, 'IPC timeout')
 2026-08-10 12:54:50,099 | INFO | main | XAUUSD: Decision engine returned HOLD
 2026-08-10 12:54:50,100 | INFO | main | Portfolio summary: 0 positions, Daily PnL: $0.00
 2026-08-10 12:55:13,996 | INFO | main | Bot stopped by user
+2026-08-10 13:11:13,095 | INFO | main | Bot started on localhost
+2026-08-10 13:11:13,095 | INFO | main | Starting bot cycle
+2026-08-10 13:11:22,369 | INFO | main | Fetched live 15m OHLCV from MT5
+2026-08-10 13:11:25,383 | INFO | main | EURUSD: Decision engine action=SKIP reason=no_pattern cycles=0
+2026-08-10 13:11:25,384 | INFO | main | EURUSD: Decision engine returned SKIP
+2026-08-10 13:11:29,203 | INFO | main | GBPUSD: Decision engine action=SKIP reason=no_pattern cycles=0
+2026-08-10 13:11:29,204 | INFO | main | GBPUSD: Decision engine returned SKIP
+2026-08-10 13:11:32,127 | INFO | main | USDJPY: Decision engine action=SKIP reason=no_pattern cycles=0
+2026-08-10 13:11:32,127 | INFO | main | USDJPY: Decision engine returned SKIP
+2026-08-10 13:11:36,585 | INFO | main | XAUUSD: Decision engine action=HOLD reason=waiting_for_multi_candle_ob_retest cycles=3
+2026-08-10 13:11:36,585 | INFO | main | XAUUSD: Decision engine returned HOLD
+2026-08-10 13:11:36,586 | INFO | main | Portfolio summary: 0 positions, Daily PnL: $0.00
+2026-08-10 13:26:36,587 | INFO | main | Starting bot cycle

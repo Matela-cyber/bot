@@ -6,6 +6,7 @@ from typing import Any, Optional
 import pandas as pd
 
 from config import settings
+from execution.mt5_client import MT5Client
 from structure.patterns import detect_patterns
 from falcon.engine import FalconEngine
 from structure.smart_money import SmartMoneyConcepts
@@ -32,7 +33,7 @@ class StrategicDecisionEngine:
         self,
         frame: pd.DataFrame,
         swings: dict,
-        mt5_client,
+        mt5_client: MT5Client,
         symbol: str,
         risk_multiplier: float = 1.0,
     ) -> dict[str, Any]:
@@ -198,7 +199,7 @@ class StrategicDecisionEngine:
         distance = abs(float(entry) - float(sl))
         position_size = 0.0
         if distance > 0:
-            position_size = risk_amount / distance
+            position_size = risk_amount / (distance * 100000.0)
 
         return {
             "symbol": symbol,

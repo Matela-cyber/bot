@@ -8,7 +8,7 @@ from typing import Any, Iterator
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
-from db.models import Base, DailyStat, PatternEvent, Trade
+from db.models import Base, DailyStat, FailedOrder, PatternEvent, Trade
 
 
 class Repository:
@@ -258,3 +258,17 @@ class Repository:
     def get_trade_by_id(self, trade_id: str) -> Trade | None:
         with self.session() as session:
             return session.get(Trade, trade_id)
+
+    def add_failed_order(self, payload: dict[str, Any]) -> None:
+        failed_order = FailedOrder(
+            symbol=payload.get("symbol", ""),
+            order_type=payload.get("order_type"),
+            volume=float(payload.get("volume") or 0.0),
+            sl=float(payload.get("stop_loss") or 0.0),
+            tp=float(payload.get("take_profit") or 0.0),
+            error_code=int(payload.get("error_code")) if payload.get("error_code") is not None else None,
+            error_message=payload.get("error_message"),
+            payload=json.dumps(payload.get("payload", {}), default=str),
+        )
+        with self.session() as session:
+            session.add(failed_order)

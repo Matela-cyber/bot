@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from typing import Any, Literal, TypedDict, cast
-from uuid import uuid4
 import time
 
 import pytz
@@ -11,6 +10,7 @@ from config import settings
 from core.portfolio_manager import PortfolioManager
 from data.ingestor import fetch_mt5_ohlcv
 from data.preprocessor import prepare_ohlcv
+from db.repository import Repository
 from execution.mt5_client import MT5Client
 from filter.liquidity_filter import LowLiquidityFilter
 from filter.news_filter import NewsFilter
@@ -23,6 +23,7 @@ from utils.logger import get_logger
 
 logger = get_logger("main")
 mt5_client = MT5Client(settings.mt5_account, settings.mt5_password, settings.mt5_server)
+repository = Repository(settings.database_url)
 news_filter = NewsFilter()
 weekend_filter = WeekendFilter()
 liquidity_filter = LowLiquidityFilter()
@@ -81,20 +82,6 @@ def select_best_pattern(patterns: list[dict[str, Any]]) -> dict[str, Any] | None
     if not patterns:
         return None
     return max(patterns, key=lambda item: item.get("confidence", 0.0))
-
-
-def _build_execution_result(frame: Any, trade_plan: dict[str, Any], reason: str, rl_action_taken: str, exit_price: float | None = None) -> dict[str, Any]:
-    return {
-        "trade_id": f"trade-{frame.index[-1].strftime('%Y%m%d%H%M%S')}-{uuid4().hex[:8]}",
-        "exit_time": frame.index[-1].to_pydatetime(),
-        "exit_price": exit_price if exit_price is not None else trade_plan["entry_price"],
-        "pnl_pips": 0,
-        "pnl_amount": 0.0,
-        "pnl_percentage": 0.0,
-        "exit_reason": reason,
-        "rl_action_taken": rl_action_taken,
-        "reward": 0.0,
-    }
 
 
 def run_cycle() -> None:
@@ -203,13 +190,73 @@ def run_cycle() -> None:
                     logger.warning("%s: %s", symbol, can_open_reason)
                     continue
 
+                order_type = "buy" if trade_plan["direction"] == "bull" else "sell"
+                execution_result: dict[str, Any] = {
+                    "mode": "live",
+                    "exit_reason": "executed",
+                    "exit_time": frame.index[-1].to_pydatetime(),
+                }
+
+                if settings.use_mt5_execution and mt5_client.is_configured():
+                    try:
+                        order_result = mt5_client.place_order(
+                            symbol=symbol,
+                            order_type=order_type,
+                            lots=trade_plan["position_size"],
+                            stop_loss=trade_plan["stop_loss"],
+                            take_profit=trade_plan["take_profit"],
+                            reference_entry_price=trade_plan["entry_price"],
+                            comment=f"auto:{trade_plan.get('pattern_name', 'bot')}"
+                        )
+                        execution_result.update(
+                            {
+                                "status": order_result.get("status", "accepted"),
+                                "order_id": order_result.get("order_id"),
+                                "ticket": order_result.get("ticket"),
+                                "entry_price": order_result.get("entry_price", trade_plan["entry_price"]),
+                            }
+                        )
+                        logger.info(
+                            "%s: MT5 order placed ticket=%s status=%s",
+                            symbol,
+                            execution_result.get("ticket"),
+                            execution_result.get("status"),
+                        )
+                    except Exception as exc:  # pragma: no cover - live trading failure path
+                        logger.exception("%s: MT5 order placement failed: %s", symbol, exc)
+                        repository.add_failed_order(
+                            {
+                                "symbol": symbol,
+                                "order_type": order_type,
+                                "volume": trade_plan["position_size"],
+                                "stop_loss": trade_plan["stop_loss"],
+                                "take_profit": trade_plan["take_profit"],
+                                "error_code": None,
+                                "error_message": str(exc),
+                                "payload": {
+                                    "trade_plan": trade_plan,
+                                    "order_request": {
+                                        "type": order_type,
+                                        "volume": trade_plan["position_size"],
+                                        "stop_loss": trade_plan["stop_loss"],
+                                        "take_profit": trade_plan["take_profit"],
+                                    },
+                                },
+                            }
+                        )
+                        continue
+                else:
+                    logger.warning("%s: MT5 execution disabled or not configured; aborting execution", symbol)
+                    continue
+
                 logger.info(
-                    "%s: Trade executed - %s | %s | size=%.4f | risk=%.2f",
+                    "%s: Trade executed - %s | %s | size=%.4f | risk=%.2f | mode=%s",
                     symbol,
                     trade_plan.get("pattern_name"),
                     trade_plan.get("direction"),
                     trade_plan["position_size"],
                     trade_plan["risk_amount"],
+                    execution_result.get("mode"),
                 )
                 pair_state.add_trade({
                     "symbol": symbol,
@@ -221,11 +268,7 @@ def run_cycle() -> None:
                 })
                 portfolio_manager.total_open_positions += 1
 
-                execution_result = {
-                    "exit_reason": "executed",
-                    "exit_time": frame.index[-1].to_pydatetime(),
-                }
-                alert_message = telegram_sender.compose_trade_alert(trade_plan, execution_result)
+                alert_message = telegram_sender.compose_trade_alert(cast(dict[str, Any], trade_plan), execution_result)
                 if telegram_sender.send(alert_message):
                     logger.info("%s: Telegram alert sent", symbol)
                 else:

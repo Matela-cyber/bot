@@ -53,6 +53,20 @@ class Trade(Base):
     falcon_report = Column(Text)
 
 
+class FailedOrder(Base):
+    __tablename__ = "failed_orders"
+    id = Column(Integer, primary_key=True)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    symbol = Column(String(10), nullable=False)
+    order_type = Column(String(10))
+    volume = Column(Float)
+    sl = Column(Float)
+    tp = Column(Float)
+    error_code = Column(Integer)
+    error_message = Column(Text)
+    payload = Column(Text)
+
+
 class DailyStat(Base):
     __tablename__ = "daily_stats"
     date = Column(Date, primary_key=True)

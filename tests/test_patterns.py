@@ -135,7 +135,7 @@ def test_repository_add_trade_and_daily_stat() -> None:
             "pnl_percentage": 0.18,
             "position_size": 10000.0,
             "exit_reason": "take_profit",
-            "rl_action_taken": "paper_execution",
+            "rl_action_taken": "live_execution",
             "reward": 0.2,
         }
     )

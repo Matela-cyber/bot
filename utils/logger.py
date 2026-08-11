@@ -4,10 +4,10 @@ import logging
 from pathlib import Path
 
 
-def get_logger(name: str) -> logging.Logger:
+def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
     """Create a logger with console and file handlers."""
     logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(level)
     logger.propagate = False
 
     if not logger.handlers:

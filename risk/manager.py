@@ -136,7 +136,7 @@ class RiskManager:
             return RiskAssessment(False, "invalid_risk_distance", 0.0, 0.0, 0.0, 0.0)
 
         risk_amount = self.account_balance * settings.risk_per_trade
-        max_position_size = risk_amount / distance
+        max_position_size = risk_amount / (distance * CONTRACT_SIZE)
         position_size = min(max_position_size, self.account_balance * 0.25)
         position_size = max(0.0, position_size)
 

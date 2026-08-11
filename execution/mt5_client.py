@@ -147,6 +147,75 @@ class MT5Client:
             lots = round(round(lots / volume_step) * volume_step, 2)
         return max(min_lot, round(lots, 2))
 
+    def _mt5_error_message(self, result: Any) -> str:
+        if result is None:
+            return "no_result"
+
+        known_codes = {
+            -6: "Authorization failed",
+            -7: "Terminal not found",
+            -8: "Not enough rights",
+            -100: "No connection",
+            -10001: "Market closed",
+            -10002: "Invalid symbol",
+            -10004: "Invalid volume",
+            -10007: "Invalid price",
+        }
+        code = getattr(result, "retcode", None)
+        comment = getattr(result, "comment", None)
+        message = known_codes.get(code, "unknown_error")
+        if comment:
+            message = f"{message}: {comment}"
+        return message
+
+    def _verify_position(self, ticket: int, symbol: str, entry_price: float | None = None, point: float = 0.0) -> dict[str, Any] | None:
+        mt5_module = self._require_mt5()
+
+        if ticket is not None:
+            positions = mt5_module.positions_get(ticket=ticket)
+            if positions:
+                position = positions[0]
+                return {
+                    "ticket": position.ticket,
+                    "symbol": position.symbol,
+                    "volume": float(position.volume),
+                    "entry_price": float(position.price_open),
+                    "current_price": float(position.price_current),
+                    "sl": float(position.sl),
+                    "tp": float(position.tp),
+                    "profit": float(position.profit),
+                }
+
+        positions = mt5_module.positions_get()
+        if positions:
+            for position in positions:
+                if position.symbol != symbol:
+                    continue
+                if entry_price is None:
+                    return {
+                        "ticket": position.ticket,
+                        "symbol": position.symbol,
+                        "volume": float(position.volume),
+                        "entry_price": float(position.price_open),
+                        "current_price": float(position.price_current),
+                        "sl": float(position.sl),
+                        "tp": float(position.tp),
+                        "profit": float(position.profit),
+                    }
+                if abs(float(position.price_open) - entry_price) <= max(3.0 * point, 1e-5):
+                    return {
+                        "ticket": position.ticket,
+                        "symbol": position.symbol,
+                        "volume": float(position.volume),
+                        "entry_price": float(position.price_open),
+                        "current_price": float(position.price_current),
+                        "sl": float(position.sl),
+                        "tp": float(position.tp),
+                        "profit": float(position.profit),
+                    }
+
+        return None
+
     def place_order(
         self,
         symbol: str,
@@ -271,22 +340,49 @@ class MT5Client:
             raise RuntimeError("MT5 order_send returned no result")
 
         if result.retcode != mt5_module.TRADE_RETCODE_DONE:
-            error_comment = getattr(result, "comment", None)
-            raise RuntimeError(
-                f"MT5 order failed with code {result.retcode}"
-                + (f", comment={error_comment}" if error_comment else "")
-            )
+            raise RuntimeError(self._mt5_error_message(result))
 
         # Try multiple fields for order ID (ticket, deal, order)
         ticket = getattr(result, "ticket", None) or getattr(result, "deal", None) or getattr(result, "order", None)
         if ticket is None:
             raise RuntimeError("MT5 order accepted but no ticket/deal/order ID found")
 
+        # After order_send returns, the terminal may need a short moment to register the position.
+        # Poll `positions_get` and `history_deals_get` for a few seconds to locate the resulting position/deal.
+        import time
+
+        position = self._verify_position(int(ticket), symbol, entry_price=entry_price, point=point)
+        if position is None:
+            # try polling briefly (total ~5s)
+            for _ in range(10):
+                time.sleep(0.5)
+                position = self._verify_position(int(ticket), symbol, entry_price=entry_price, point=point)
+                if position is not None:
+                    break
+
+        # as a final resort, check recent deals and history orders to correlate the ticket
+        if position is None and hasattr(mt5_module, "history_deals_get"):
+            now_ts = int(time.time())
+            try:
+                deals = mt5_module.history_deals_get(0, now_ts, 20) or []
+                for d in deals:
+                    if getattr(d, "order", None) == ticket or getattr(d, "deal", None) == ticket:
+                        position = self._verify_position(int(ticket), symbol, entry_price=entry_price, point=point)
+                        break
+            except Exception:
+                # ignore history errors during verification
+                pass
+
+        if position is None:
+            raise RuntimeError(f"MT5 order sent but position not found for ticket {ticket}")
+
         return {
             "status": "accepted",
             "order_id": str(ticket),
+            "ticket": ticket,
             "comment": getattr(result, "comment", ""),
             "entry_price": entry_price,
+            "position": position,
         }
 
     def draw_analysis(self, symbol: str, trade_plan: dict[str, Any]) -> None:

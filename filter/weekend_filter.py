@@ -14,9 +14,9 @@ class WeekendFilter:
     """Filter that blocks trading during weekend market closures."""
 
     def is_weekend(self, current_time: datetime) -> bool:
-        """Return True when the current time is Saturday UTC."""
+        """Return True when the current time is Saturday or Sunday UTC."""
         utc_time = current_time.astimezone(pytz.UTC)
-        return utc_time.weekday() == 5
+        return utc_time.weekday() in (5, 6)
 
     def is_market_open(self, current_time: datetime) -> tuple[bool, str]:
         """Return whether Forex market trading hours are currently open."""

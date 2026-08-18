@@ -1,42 +1,45 @@
-"""New orchestrator for regime-based bot with multi-pair support."""
+"""Self-aware, adaptive Forex trading bot."""
 from __future__ import annotations
 
 import time
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
+import pandas as pd
 import pytz
 from sqlalchemy import text
 
 from config import settings
+from core.portfolio_manager import PortfolioManager
+from core.self_diagnostic import CycleReport
 from data.ingestor import fetch_mt5_ohlcv
 from data.preprocessor import prepare_ohlcv
-from structure.swing_detector import detect_swings
+from db.repository import Repository
+from execution.mt5_client import MT5Client
+from filter.liquidity_filter import LowLiquidityFilter
+from filter.news_filter import NewsFilter
+from filter.trading_filter import TradingFilter
+from filter.weekend_filter import WeekendFilter
+from notifications.telegram_sender import TelegramSender
 from regime.market_regime import MarketRegime
-from strategies.trend_strategy import TrendStrategy
-from strategies.mean_reversion import MeanReversionStrategy
-from strategies.breakout_strategy import BreakoutStrategy
+from risk.manager import RiskManager
 from signals.signal_engine import SignalEngine
 from smc.structure import StructureDetector
-from execution.mt5_client import MT5Client
-from risk.manager import RiskManager
-from notifications.telegram_sender import TelegramSender
-from db.repository import Repository
+from strategies.breakout_strategy import BreakoutStrategy
+from strategies.mean_reversion import MeanReversionStrategy
+from strategies.trend_strategy import TrendStrategy
+from structure.candlestick_validator import CandlestickValidator
+from structure.swing_detector import detect_swings
 from utils.logger import get_logger
-from filter.trading_filter import TradingFilter
-from filter.news_filter import NewsFilter
-from filter.weekend_filter import WeekendFilter
-from filter.liquidity_filter import LowLiquidityFilter
-from core.portfolio_manager import PortfolioManager
 
 logger = get_logger("bot")
 
 
-class RegimeBasedBot:
-    """Regime-adaptive trading bot with multi-pair support."""
+class AdaptiveTradingBot:
+    """Self-aware, adaptive trading bot with multi-cycle support."""
 
     def __init__(self) -> None:
-        """Initialize bot components."""
+        """Initialize bot components and state."""
         self.mt5_client = MT5Client(settings.mt5_account, settings.mt5_password, settings.mt5_server)
         self.risk_manager = RiskManager(
             account_balance=float(settings.account_balance),
@@ -50,300 +53,458 @@ class RegimeBasedBot:
         self.liquidity_filter = LowLiquidityFilter()
         self.trading_filter = TradingFilter(self.news_filter, self.weekend_filter, self.liquidity_filter)
         self.signal_engine = SignalEngine()
+        self.candlestick_validator = CandlestickValidator()
         self.repository = Repository(settings.database_url)
         self.portfolio_manager = PortfolioManager({"TRADING_PAIRS": settings.trading_pairs})
 
-        # Trading pairs and their timeframes from settings
         self.trading_pairs = settings.trading_pairs
         self.pair_timeframes = settings.pair_timeframes
         self.pair_risk_allocation = settings.pair_risk_allocation
 
-        # Track daily reset
-        self._last_reset_date = None
+        self.last_cycle_time: datetime | None = None
+        self.open_positions: dict[int, dict[str, Any]] = {}
+        self.monitoring_positions: list[int] = []
+        self.diagnostic_reports: list[CycleReport] = []
+        self._last_reset_date: date | None = None
+        self.error_count = 0
+        self.max_errors = 10
+        self.last_health_check: datetime | None = None
 
-    def health_check(self) -> tuple[bool, str]:
-        """Verify bot can connect to MT5 and fetch data."""
+        self.cycle_types = {
+            "standard": 900,
+            "micro": 120,
+            "monitoring": 30,
+            "emergency": 5,
+        }
+
+    def run(self) -> None:
+        """Main bot loop with adaptive cycle timing."""
+        logger.info("🚀 Bot starting...")
+
+        initial_report = self.health_check()
+        if not initial_report.is_healthy():
+            logger.critical("Initial health check failed: %s", initial_report.summary())
+            try:
+                self.telegram_sender.send(f"🚨 Bot health check failed: {initial_report.summary()}")
+            except Exception:
+                logger.warning("Telegram health alert failed")
+            return
+
         try:
-            # Check MT5
-            if settings.use_mt5_execution and not self.mt5_client.is_configured():
-                return False, "MT5 not configured"
+            self.telegram_sender.send("🚀 Bot started successfully (self-aware mode)")
+        except Exception:
+            logger.warning("Telegram startup alert failed")
 
-            # Check database
+        while True:
+            try:
+                cycle_type = self._determine_cycle_type()
+                report = self.run_cycle(cycle_type)
+                self.diagnostic_reports.append(report)
+                print(report.summary())
+                logger.info(report.summary())
+
+                if report.errors:
+                    self.error_count += 1
+                    if self.error_count >= self.max_errors:
+                        logger.critical("Max errors reached, shutting down")
+                        try:
+                            self.telegram_sender.send("🚨 CRITICAL: Max errors reached, bot shutting down")
+                        except Exception:
+                            pass
+                        raise RuntimeError("Max errors reached")
+                else:
+                    self.error_count = 0
+
+                sleep_time = self.cycle_types.get(cycle_type, 900)
+                self.last_cycle_time = datetime.now(pytz.UTC)
+                time.sleep(sleep_time)
+
+            except KeyboardInterrupt:
+                logger.info("🛑 Bot stopped by user")
+                try:
+                    self.telegram_sender.send("🛑 Bot stopped by user")
+                except Exception:
+                    pass
+                break
+            except Exception as exc:
+                logger.exception("💥 Unhandled error: %s", exc)
+                try:
+                    self.telegram_sender.send(f"⚠️ Bot error: {str(exc)[:100]}")
+                except Exception:
+                    pass
+                self.error_count += 1
+                time.sleep(60)
+
+    def _determine_cycle_type(self) -> str:
+        """Choose the appropriate cycle type based on market and risk conditions."""
+        now = datetime.now(pytz.UTC)
+
+        if self._has_emergency_positions():
+            return "emergency"
+        if self._has_open_positions():
+            return "monitoring"
+        if self._has_pending_signals():
+            return "micro"
+        if now.minute % 15 == 0:
+            return "standard"
+        return "micro"
+
+    def _has_emergency_positions(self) -> bool:
+        """Return true if any open position is near stop loss or risk threshold."""
+        for pos in self.open_positions.values():
+            if bool(pos.get("danger", False)):
+                return True
+        return False
+
+    def _has_open_positions(self) -> bool:
+        """Return true if there are tracked open positions."""
+        return bool(self.open_positions)
+
+    def _has_pending_signals(self) -> bool:
+        """Return true if confirmation cycle should run before entry."""
+        return False
+
+    def health_check(self) -> CycleReport:
+        """Run a comprehensive health check across key bot subsystems."""
+        report = CycleReport(datetime.now(pytz.UTC), "health")
+
+        try:
+            if settings.use_mt5_execution and not self.mt5_client.is_configured():
+                report.add_check("MT5 Configuration", False, "MT5 not configured")
+            else:
+                self.mt5_client.connect()
+                balance = self.mt5_client.get_balance()
+                report.add_check("MT5 Connection", True, f"Connected, balance: ${balance:.2f}")
+                report.add_success("MT5 connected")
+        except Exception as exc:
+            report.add_check("MT5 Connection", False, str(exc))
+            report.add_error(f"MT5 connection failed: {exc}")
+
+        try:
             with self.repository.session() as session:
                 session.execute(text("SELECT 1"))
+            report.add_check("Database", True, "Connected and responsive")
+            report.add_success("Database healthy")
+        except Exception as exc:
+            report.add_check("Database", False, str(exc))
+            report.add_error(f"Database check failed: {exc}")
 
-            # Check recent data
+        try:
             data = fetch_mt5_ohlcv(days=1, timeframe="15m", symbol="EURUSD")
             if data.empty:
-                return False, "No market data available"
+                report.add_check("Data Fetching", False, "No data received")
+                report.add_error("Data fetching returned empty OHLCV frame")
+            else:
+                report.add_check("Data Fetching", True, f"Received {len(data)} candles")
+                report.add_success("Market data available")
+        except Exception as exc:
+            report.add_check("Data Fetching", False, str(exc))
+            report.add_error(f"Data fetch failed: {exc}")
 
-            logger.info("Health check passed")
-            return True, "Healthy"
+        try:
+            if settings.telegram_token and settings.telegram_chat_id:
+                success = self.telegram_sender.send("🩺 Health check: Bot is alive")
+                report.add_check("Telegram", bool(success), "Alert send status")
+                if success:
+                    report.add_success("Telegram alerting healthy")
+            else:
+                report.add_check("Telegram", True, "Not configured (skipped)")
+        except Exception as exc:
+            report.add_check("Telegram", False, str(exc))
+            report.add_error(f"Telegram alerting failed: {exc}")
 
-        except Exception as e:
-            return False, str(e)
+        try:
+            limits_ok, limits_reason = self.portfolio_manager.check_global_limits()
+            report.add_check("Portfolio Limits", limits_ok, limits_reason)
+            if limits_ok:
+                report.add_success("Portfolio limits valid")
+        except Exception as exc:
+            report.add_check("Portfolio Limits", False, str(exc))
+            report.add_error(f"Portfolio limit check failed: {exc}")
 
-    def _reset_daily_stats(self, current_time: datetime) -> None:
-        """Reset daily PnL at midnight UTC."""
-        current_date = current_time.date()
-        if self._last_reset_date != current_date:
-            if self._last_reset_date is not None:
-                logger.info(f"Daily reset: clearing daily PnL (was ${self.portfolio_manager.global_daily_pnl:.2f})")
-                self.portfolio_manager.global_daily_pnl = 0.0
-            self._last_reset_date = current_date
+        self.last_health_check = datetime.now(pytz.UTC)
+        return report
 
-    def run_cycle(self) -> None:
-        """Run one complete trading cycle across all pairs."""
-        logger.info("Starting bot cycle")
+    def run_cycle(self, cycle_type: str) -> CycleReport:
+        """Execute a full trading cycle and return a diagnostic report."""
+        report = CycleReport(datetime.now(pytz.UTC), cycle_type)
+        report.add_success(f"Starting {cycle_type} cycle")
 
-        # 0. Reset daily stats at midnight
         current_time = datetime.now(pytz.UTC)
         self._reset_daily_stats(current_time)
 
-        # 1. Market safety gates
         filter_result = self.trading_filter.should_trade(current_time)
         if not filter_result["trade"]:
-            logger.info("Trading blocked: %s", filter_result["reason"])
-            return
+            report.add_check("Safety Gates", False, filter_result["reason"])
+            report.add_warning(f"Trading blocked: {filter_result['reason']}")
+            return report
+        report.add_check("Safety Gates", True, "All safety gates passed")
+        report.add_success("Safety gates passed")
 
-        # 2. Check portfolio limits
-        if not self.portfolio_manager.check_global_limits()[0]:
-            logger.warning("Global limit hit: %s", self.portfolio_manager.check_global_limits()[1])
-            return
+        limits_ok, limits_reason = self.portfolio_manager.check_global_limits()
+        if not limits_ok:
+            report.add_check("Portfolio Limits", False, limits_reason)
+            report.add_warning(f"Portfolio limit hit: {limits_reason}")
+            return report
+        report.add_check("Portfolio Limits", True, limits_reason)
 
-        # 3. Loop through all trading pairs
+        pairs_processed = 0
+        pairs_skipped = 0
+        signals_generated = 0
+        trades_executed = 0
+
         for symbol in self.trading_pairs:
             try:
-                self._process_pair(symbol, current_time)
-            except Exception as e:
-                logger.error(f"Error processing {symbol}: {e}")
-                self.telegram_sender.send(f"⚠️ Error on {symbol}: {str(e)[:100]}")
+                result = self._process_pair(symbol, current_time)
+                if result.get("skipped"):
+                    pairs_skipped += 1
+                else:
+                    pairs_processed += 1
+                if result.get("signal_generated"):
+                    signals_generated += 1
+                if result.get("trade_executed"):
+                    trades_executed += 1
+            except Exception as exc:
+                report.add_error(f"Error processing {symbol}: {exc}")
 
-        # 4. Portfolio summary
-        logger.info(f"Portfolio summary: {self.portfolio_manager.total_open_positions} positions, Daily PnL: ${self.portfolio_manager.global_daily_pnl:.2f}")
+        report.pairs_processed = pairs_processed
+        report.pairs_skipped = pairs_skipped
+        report.signals_generated = signals_generated
+        report.trades_executed = trades_executed
 
-    def _process_pair(self, symbol: str, current_time: datetime) -> None:
-        """Process a single trading pair."""
-        # Get timeframe for this pair
-        timeframe = self.pair_timeframes.get(symbol, "15m")
+        if cycle_type in {"monitoring", "emergency"}:
+            self._monitor_positions(report)
+
+        return report
+
+    def _process_pair(self, symbol: str, current_time: datetime) -> dict[str, Any]:
+        """Process one symbol across multiple timeframes, validate candlesticks, and score the trade."""
+        result: dict[str, Any] = {"skipped": True, "signal_generated": False, "trade_executed": False}
         risk_allocation = self.pair_risk_allocation.get(symbol, 0.005)
 
-        # 1. Fetch market data
         try:
-            data = fetch_mt5_ohlcv(days=90, timeframe=timeframe, symbol=symbol)
-            frame = prepare_ohlcv(data)
-            if frame.empty:
-                logger.warning(f"No OHLCV data fetched for {symbol}")
-                return
+            frames: dict[str, pd.DataFrame] = {}
+            for tf in ("4h", "1h", "15m"):
+                data = fetch_mt5_ohlcv(days=180, timeframe=tf, symbol=symbol)
+                frame = prepare_ohlcv(data)
+                if frame.empty:
+                    raise ValueError(f"No {tf} OHLCV data for {symbol}")
+                frames[tf] = frame
+
+            swings: dict[str, Any] = {}
+            for tf in ("4h", "1h", "15m"):
+                swings[tf] = detect_swings(frames[tf])
+
+            structures: dict[str, Any] = {}
+            for tf in ("4h", "1h", "15m"):
+                structures[tf] = StructureDetector(swings[tf], frames[tf])
+
+            regimes: dict[str, dict[str, Any]] = {}
+            for tf in ("4h", "1h", "15m"):
+                regimes[tf] = MarketRegime(frames[tf]).get_regime()
+            logger.info(
+                "%s: 4H=%s | 1H=%s | 15M=%s",
+                symbol,
+                regimes["4h"]["regime"],
+                regimes["1h"]["regime"],
+                regimes["15m"]["regime"],
+            )
+
+            signal = self._select_strategy_and_signal(frames["15m"], regimes["15m"])
+            if signal["signal"] == "none":
+                logger.info("%s: No signal generated", symbol)
+                return result
+
+            candle_result = self.candlestick_validator.validate(frames["15m"], signal["signal"])
+            if candle_result.get("confirmed"):
+                logger.info(
+                    "%s: Candlestick confirmed %s (+%.0f%%)",
+                    symbol,
+                    candle_result.get("pattern_name"),
+                    float(candle_result.get("bonus", 0.0)) * 100,
+                )
+
+            struct_dict = {
+                "bos_4h": structures["4h"].detect_bos(),
+                "bos_1h": structures["1h"].detect_bos(),
+                "bos_15m": structures["15m"].detect_bos(),
+                "choch_4h": structures["4h"].detect_choch(),
+                "choch_1h": structures["1h"].detect_choch(),
+                "choch_15m": structures["15m"].detect_choch(),
+            }
+
+            scored = self.signal_engine.score_multi_timeframe(
+                signal=signal,
+                h4_regime=regimes["4h"],
+                h1_regime=regimes["1h"],
+                m15_regime=regimes["15m"],
+                structure=struct_dict,
+                frame_15m=frames["15m"],
+                candlestick_result=candle_result,
+            )
+            logger.info("%s: Signal scored %s (%s)", symbol, scored["score"], scored["grade"])
+
+            if scored["score"] < settings.min_score:
+                logger.info("%s: Score %s < %s threshold, skipping", symbol, scored["score"], settings.min_score)
+                return result
+
+            result["signal_generated"] = True
+            entry = signal.get("entry", 0.0)
+            sl = signal.get("stop_loss", 0.0)
+            tp = signal.get("take_profit", 0.0)
+
+            if not all([entry > 0, sl > 0, tp > 0]):
+                logger.warning("%s: Invalid signal prices (entry=%s, sl=%s, tp=%s)", symbol, entry, sl, tp)
+                return result
+
+            if signal["signal"] == "buy":
+                if not (entry > sl and entry < tp):
+                    logger.warning("%s: Invalid BUY levels (SL=%s, entry=%s, TP=%s)", symbol, sl, entry, tp)
+                    return result
+            elif signal["signal"] == "sell":
+                if not (entry < sl and entry > tp):
+                    logger.warning("%s: Invalid SELL levels (SL=%s, entry=%s, TP=%s)", symbol, sl, entry, tp)
+                    return result
+
+            pair_state = self.portfolio_manager.get_pair_state(symbol)
+            if pair_state.consecutive_losses >= 3:
+                logger.info("%s: Paused due to 3 consecutive losses", symbol)
+                return result
+
+            if self.portfolio_manager.total_open_positions >= settings.global_max_concurrent_positions:
+                logger.info("%s: Global max positions reached (%s)", symbol, self.portfolio_manager.total_open_positions)
+                return result
+
+            self._execute_trade(symbol, signal, scored, regimes["1h"], risk_allocation)
+            result["trade_executed"] = True
+            result["skipped"] = False
+            return result
+
         except Exception as exc:
-            logger.exception(f"Failed to fetch market data for {symbol}: %s", exc)
-            return
+            logger.error("%s: Error - %s", symbol, exc)
+            return result
 
-        # 2. Analyze market structure
-        swings = detect_swings(frame)
-        structure = StructureDetector(swings, frame)
+    def _monitor_positions(self, report: CycleReport) -> None:
+        """Monitor live open positions and update diagnostic report."""
+        try:
+            positions = self.mt5_client.get_open_positions()
+            self.open_positions = {pos["ticket"]: pos for pos in positions}
+            if positions:
+                report.add_check("Position Monitoring", True, f"Monitoring {len(positions)} positions")
+                for pos in positions:
+                    report.add_success(f"Position {pos['ticket']}: PnL=${pos.get('pnl', 0.0):.2f}")
+            else:
+                report.add_check("Position Monitoring", True, "No open positions")
+        except Exception as exc:
+            report.add_check("Position Monitoring", False, str(exc))
+            report.add_error(f"Position monitoring failed: {exc}")
 
-        # 3. Detect market regime
-        regime = MarketRegime(frame).get_regime()
-        logger.info(f"{symbol}: Market regime: {regime['regime']} (ADX={regime['adx']:.2f})")
-
-        if regime["regime"] == "mixed":
-            logger.info(f"{symbol}: Mixed regime detected, skipping")
-            return
-
-        # 4. Select strategy based on regime
-        signal = self._select_strategy_and_signal(frame, regime)
-        if signal["signal"] == "none":
-            logger.info(f"{symbol}: No signal generated")
-            return
-
-        # 5. Score signal
-        struct_dict: dict[str, Any] = {
-            "bos": structure.detect_bos(),
-            "choch": structure.detect_choch(),
-        }
-        scored = self.signal_engine.score(signal, regime, struct_dict)
-        logger.info(f"{symbol}: Signal scored: {scored['score']} (grade={scored['grade']})")
-
-        # 6. Risk check
-        if scored["score"] < settings.min_score:
-            logger.info(f"{symbol}: Score {scored['score']} < {settings.min_score} threshold, skipping")
-            return
-
-        # 7. SIGNAL VALIDATION (CRITICAL FIX)
-        entry = signal.get("entry", 0.0)
-        sl = signal.get("stop_loss", 0.0)
-        tp = signal.get("take_profit", 0.0)
-
-        if not all([entry > 0, sl > 0, tp > 0]):
-            logger.warning(f"{symbol}: Invalid signal prices (entry={entry}, sl={sl}, tp={tp})")
-            return
-
-        if signal["signal"] == "buy":
-            if not (entry > sl and entry < tp):
-                logger.warning(f"{symbol}: Invalid BUY levels (SL={sl} not below entry={entry} or TP={tp} not above)")
-                return
-        elif signal["signal"] == "sell":
-            if not (entry < sl and entry > tp):
-                logger.warning(f"{symbol}: Invalid SELL levels (SL={sl} not above entry={entry} or TP={tp} not below)")
-                return
-
-        # 8. Check pair-specific risk
-        pair_state = self.portfolio_manager.get_pair_state(symbol)
-        if pair_state.consecutive_losses >= 3:
-            logger.info(f"{symbol}: Paused due to 3 consecutive losses")
-            return
-
-        # 9. Check global position limit
-        if self.portfolio_manager.total_open_positions >= settings.global_max_concurrent_positions:
-            logger.info(f"{symbol}: Global max positions reached ({self.portfolio_manager.total_open_positions})")
-            return
-
-        # 10. Execute trade with risk allocation
-        self._execute_trade(symbol, signal, scored, regime, risk_allocation)
+    def _reset_daily_stats(self, current_time: datetime) -> None:
+        """Reset daily totals at midnight UTC."""
+        if self._last_reset_date != current_time.date():
+            if self._last_reset_date is not None:
+                logger.info("Daily reset: clearing daily PnL (was $%.2f)", self.portfolio_manager.global_daily_pnl)
+                self.portfolio_manager.global_daily_pnl = 0.0
+            self._last_reset_date = current_time.date()
 
     def _select_strategy_and_signal(self, frame: Any, regime: dict[str, Any]) -> dict[str, Any]:
-        """Select appropriate strategy based on regime and generate signal."""
+        """Select and generate the directional signal based on the active regime."""
         if regime["regime"] == "trending":
             strategy = TrendStrategy(frame, regime)
         elif regime["regime"] == "ranging":
             strategy = MeanReversionStrategy(frame, regime)
         else:
             strategy = BreakoutStrategy(frame, regime)
-
         return strategy.generate_signal()
 
-    def _execute_trade(self, symbol: str, signal: dict[str, Any], scored: dict[str, Any], regime: dict[str, Any], risk_allocation: float) -> None:
-        """Execute trade if all checks pass."""
-        if signal["signal"] not in ("buy", "sell"):
-            logger.warning(f"{symbol}: Invalid signal: {signal['signal']}")
-            return
-
+    def _execute_trade(
+        self,
+        symbol: str,
+        signal: dict[str, Any],
+        scored: dict[str, Any],
+        regime: dict[str, Any],
+        risk_allocation: float,
+    ) -> None:
+        """Execute the trade only after validation, risk gating, and MT5 checks pass."""
         try:
-            order_type = signal["signal"]
-            logger.info(f"{symbol}: Executing {order_type} order: score={scored['score']}")
+            if signal["signal"] not in ("buy", "sell"):
+                raise ValueError(f"Invalid signal: {signal['signal']}")
 
             if not settings.use_mt5_execution or not self.mt5_client.is_configured():
-                logger.warning(f"{symbol}: MT5 execution disabled or not configured")
+                logger.warning("%s: MT5 execution disabled or not configured", symbol)
                 return
 
-            # Calculate position size based on risk allocation
-            account_balance = float(settings.account_balance)
-            risk_amount = account_balance * risk_allocation
-            entry_price = signal.get("entry", 0.0)
-            stop_loss = signal.get("stop_loss", 0.0)
-
-            # CRITICAL FIX: Prevent division by zero
+            entry_price = float(signal.get("entry", 0.0))
+            stop_loss = float(signal.get("stop_loss", 0.0))
             risk_per_unit = abs(entry_price - stop_loss)
             if risk_per_unit <= 0:
-                logger.warning(f"{symbol}: Invalid risk distance (entry={entry_price}, SL={stop_loss})")
-                return
+                raise ValueError(f"Invalid risk distance: entry={entry_price}, SL={stop_loss}")
 
+            account_balance = float(settings.account_balance)
+            risk_amount = account_balance * risk_allocation
             lots = risk_amount / (risk_per_unit * 100000)
             lots = round(max(0.01, min(lots, 1.0)), 2)
 
             order_result = self.mt5_client.place_order(
                 symbol=symbol,
-                order_type=order_type,
+                order_type=signal["signal"],
                 lots=lots,
-                stop_loss=signal.get("stop_loss"),
-                take_profit=signal.get("take_profit"),
-                comment=f"regime:{regime['regime']}|score:{scored['score']}",
+                stop_loss=stop_loss,
+                take_profit=float(signal.get("take_profit", 0.0)),
+                comment=f"score:{scored['score']}|regime:{regime['regime']}",
             )
 
-            # CRITICAL FIX: Check order result
             if order_result.get("status") != "accepted":
-                logger.error(f"{symbol}: Order rejected: {order_result}")
+                logger.error("%s: Order rejected: %s", symbol, order_result)
                 self.repository.add_failed_order({
                     "symbol": symbol,
-                    "order_type": order_type,
+                    "order_type": signal["signal"],
                     "volume": lots,
                     "error_code": order_result.get("error_code"),
                     "error_message": str(order_result),
                 })
-                self.telegram_sender.send(f"⚠️ Order failed on {symbol}: {order_result.get('error_message', 'Unknown error')}")
+                self.telegram_sender.send(
+                    f"⚠️ Order failed on {symbol}: {order_result.get('error_message', 'Unknown error')}"
+                )
                 return
 
-            logger.info(f"{symbol}: Order placed: ticket={order_result.get('ticket')} status={order_result.get('status')}")
-
-            # Update portfolio manager
+            logger.info("%s: Order placed: ticket=%s status=%s", symbol, order_result.get("ticket"), order_result.get("status"))
             self.portfolio_manager.update_position_state(symbol, {
                 "ticket": order_result.get("ticket"),
                 "symbol": symbol,
-                "direction": order_type,
-                "entry_price": signal.get("entry"),
-                "stop_loss": signal.get("stop_loss"),
+                "direction": signal["signal"],
+                "entry_price": entry_price,
+                "stop_loss": stop_loss,
                 "take_profit": signal.get("take_profit"),
                 "volume": lots,
             })
 
-            # Send Telegram alert
             msg = (
                 f"🟢 Trade Opened\n"
                 f"Symbol: {symbol}\n"
-                f"Side: {order_type.upper()}\n"
+                f"Side: {signal['signal'].upper()}\n"
                 f"Score: {scored['score']}/100 ({scored['grade']})\n"
                 f"Regime: {regime['regime']}\n"
                 f"Size: {lots:.2f} lots\n"
                 f"Ticket: {order_result.get('ticket')}"
             )
-            self.telegram_sender.send(msg)
+            try:
+                self.telegram_sender.send(msg)
+            except Exception:
+                logger.warning("Telegram trade alert failed for %s", symbol)
 
         except Exception as exc:
-            logger.exception(f"{symbol}: Trade execution failed: %s", exc)
-            self.telegram_sender.send(f"❌ Trade failed on {symbol}: {str(exc)[:100]}")
+            logger.exception("%s: Trade execution failed: %s", symbol, exc)
+            try:
+                self.telegram_sender.send(f"❌ Trade failed on {symbol}: {str(exc)[:100]}")
+            except Exception:
+                pass
 
 
 def main() -> None:
-    """Main entry point with resilient error handling."""
-    bot = RegimeBasedBot()
-    logger.info("Bot started")
-
-    # Health check before starting
-    healthy, reason = bot.health_check()
-    if not healthy:
-        logger.critical(f"Health check failed: {reason}")
-        bot.telegram_sender.send(f"🚨 Health check failed: {reason}")
-        raise RuntimeError(reason)
-
-    bot.telegram_sender.send("🚀 Bot started successfully")
-
-    error_count = 0
-    max_consecutive_errors = 10
-
-    while True:
-        try:
-            bot.run_cycle()
-            error_count = 0  # Reset on success
-            time.sleep(settings.loop_interval_seconds)
-
-        except KeyboardInterrupt:
-            logger.info("Bot stopped by user")
-            bot.telegram_sender.send("🛑 Bot stopped by user")
-            break
-
-        except Exception as exc:
-            error_count += 1
-            logger.exception(f"Cycle failed (error #{error_count}): {exc}")
-
-            # Send alert
-            try:
-                bot.telegram_sender.send(f"⚠️ Bot error #{error_count}: {str(exc)[:100]}")
-            except:
-                pass
-
-            if error_count >= max_consecutive_errors:
-                logger.critical(f"Max errors ({max_consecutive_errors}) reached, shutting down")
-                try:
-                    bot.telegram_sender.send("🚨 CRITICAL: Max errors reached, bot shutting down")
-                except:
-                    pass
-                raise
-
-            # Exponential backoff: 1min, 2min, 4min, 8min... max 5min
-            backoff = min(60 * (2 ** (error_count - 1)), 300)
-            logger.info(f"Waiting {backoff}s before retry...")
-            time.sleep(backoff)
+    """Entry point for the adaptive trading bot."""
+    bot = AdaptiveTradingBot()
+    bot.run()
 
 
 if __name__ == "__main__":

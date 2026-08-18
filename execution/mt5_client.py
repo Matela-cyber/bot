@@ -151,7 +151,7 @@ class MT5Client:
         if result is None:
             return "no_result"
 
-        known_codes = {
+        known_codes: dict[int, str] = {
             -6: "Authorization failed",
             -7: "Terminal not found",
             -8: "Not enough rights",
@@ -163,7 +163,7 @@ class MT5Client:
         }
         code = getattr(result, "retcode", None)
         comment = getattr(result, "comment", None)
-        message = known_codes.get(code, "unknown_error")
+        message: str = known_codes.get(int(code) if code is not None else 0, "unknown_error")
         if comment:
             message = f"{message}: {comment}"
         return message
@@ -171,20 +171,19 @@ class MT5Client:
     def _verify_position(self, ticket: int, symbol: str, entry_price: float | None = None, point: float = 0.0) -> dict[str, Any] | None:
         mt5_module = self._require_mt5()
 
-        if ticket is not None:
-            positions = mt5_module.positions_get(ticket=ticket)
-            if positions:
-                position = positions[0]
-                return {
-                    "ticket": position.ticket,
-                    "symbol": position.symbol,
-                    "volume": float(position.volume),
-                    "entry_price": float(position.price_open),
-                    "current_price": float(position.price_current),
-                    "sl": float(position.sl),
-                    "tp": float(position.tp),
-                    "profit": float(position.profit),
-                }
+        positions = mt5_module.positions_get(ticket=ticket)
+        if positions:
+            position = positions[0]
+            return {
+                "ticket": position.ticket,
+                "symbol": position.symbol,
+                "volume": float(position.volume),
+                "entry_price": float(position.price_open),
+                "current_price": float(position.price_current),
+                "sl": float(position.sl),
+                "tp": float(position.tp),
+                "profit": float(position.profit),
+            }
 
         positions = mt5_module.positions_get()
         if positions:
@@ -364,7 +363,7 @@ class MT5Client:
         if position is None and hasattr(mt5_module, "history_deals_get"):
             now_ts = int(time.time())
             try:
-                deals = mt5_module.history_deals_get(0, now_ts, 20) or []
+                deals: list[Any] = mt5_module.history_deals_get(0, now_ts, 20) or []
                 for d in deals:
                     if getattr(d, "order", None) == ticket or getattr(d, "deal", None) == ticket:
                         position = self._verify_position(int(ticket), symbol, entry_price=entry_price, point=point)

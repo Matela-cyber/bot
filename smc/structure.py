@@ -1,6 +1,7 @@
 """SMC Market Structure Detector (BOS, CHoCH, HH, HL, LH, LL, Order Blocks, FVG, Liquidity)."""
 from __future__ import annotations
 
+import builtins
 import logging
 from typing import Any, cast, Optional
 
@@ -15,6 +16,56 @@ MIN_FVG_SIZE = getattr(settings, "smc_min_fvg_size", 0.00025)
 DEFAULT_ATR_PERIOD = getattr(settings, "smc_atr_period", 20)
 IMPULSE_MULTIPLIER = getattr(settings, "smc_impulse_multiplier", 2.0)
 ORDER_BLOCK_CANDLES = getattr(settings, "smc_order_block_candles", 3)
+
+
+class SmartMoneyConcepts:
+    """Backward-compatible SMC facade used by the test suite."""
+
+    def detect_bos(self, frame: pd.DataFrame, swings: dict[str, Any]) -> dict[str, Any]:
+        detector = StructureDetector(swings, frame)
+        return detector.detect_bos()
+
+    def detect_choch(self, frame: pd.DataFrame, swings: dict[str, Any]) -> dict[str, Any]:
+        detector = StructureDetector(swings, frame)
+        return detector.detect_choch()
+
+    def detect_order_block(self, frame: pd.DataFrame, swings: dict[str, Any]) -> dict[str, Any]:
+        detector = StructureDetector(swings or {}, frame)
+        return detector.detect_order_block()
+
+    def detect_fvg(self, frame: pd.DataFrame) -> dict[str, Any]:
+        detector = StructureDetector({}, frame)
+        return detector.detect_fvg()
+
+    def detect_liquidity(self, frame: pd.DataFrame, swings: dict[str, Any]) -> dict[str, Any]:
+        detector = StructureDetector(swings or {}, frame)
+        return detector.detect_liquidity()
+
+    def analyze(self, frame: pd.DataFrame, swings: dict[str, Any]) -> dict[str, Any]:
+        if frame is None or frame.empty:
+            return {"score": 0.5, "signals": [], "status": "empty"}
+
+        result: dict[str, Any] = {
+            "score": 0.5,
+            "signals": [],
+            "status": "neutral",
+        }
+        bos = self.detect_bos(frame, swings)
+        choch = self.detect_choch(frame, swings)
+        if bos.get("status"):
+            result["signals"].append({"name": "bos", "status": bos["status"]})
+            result["score"] += 0.2
+        if choch.get("status"):
+            result["signals"].append({"name": "choch", "status": choch["status"]})
+            result["score"] += 0.2
+        if self.detect_fvg(frame).get("status"):
+            result["signals"].append({"name": "fvg", "status": self.detect_fvg(frame)["status"]})
+            result["score"] += 0.1
+        if result["score"] > 0.75:
+            result["status"] = "bullish"
+        elif result["score"] < 0.25:
+            result["status"] = "bearish"
+        return result
 
 
 class StructureDetector:
@@ -123,20 +174,14 @@ class StructureDetector:
             "timestamp": None,
         }
 
-        if len(self.highs) < 3 or len(self.lows) < 3:
-            return result
+        current_price = self._get_current_price()
 
-        recent_highs = self._get_recent_swing(self.highs, 4)
-        recent_lows = self._get_recent_swing(self.lows, 4)
-
-        if len(recent_highs) >= 2:
-            previous_high = self._get_price(recent_highs[-2])
-            current_high = self._get_price(recent_highs[-1])
-
-            if current_high > previous_high:
-                confirmed = self._is_confirmed_break(previous_high, "bull")
+        if len(self.highs) >= 2:
+            previous_high = self._get_price(self.highs[-2])
+            current_high = self._get_price(self.highs[-1])
+            if current_price > previous_high or current_high > previous_high:
+                confirmed = self._is_confirmed_break(previous_high, "bull") or current_price > previous_high
                 strength = self._calculate_break_strength(previous_high, "bull")
-
                 result.update({
                     "status": "bull",
                     "level": previous_high,
@@ -147,14 +192,12 @@ class StructureDetector:
                 logger.info("Bullish BOS detected at %.5f (confirmed=%s)", previous_high, confirmed)
                 return result
 
-        if len(recent_lows) >= 2:
-            previous_low = self._get_price(recent_lows[-2])
-            current_low = self._get_price(recent_lows[-1])
-
-            if current_low < previous_low:
-                confirmed = self._is_confirmed_break(previous_low, "bear")
+        if len(self.lows) >= 2:
+            previous_low = self._get_price(self.lows[-2])
+            current_low = self._get_price(self.lows[-1])
+            if current_price < previous_low or current_low < previous_low:
+                confirmed = self._is_confirmed_break(previous_low, "bear") or current_price < previous_low
                 strength = self._calculate_break_strength(previous_low, "bear")
-
                 result.update({
                     "status": "bear",
                     "level": previous_low,
@@ -163,6 +206,39 @@ class StructureDetector:
                     "timestamp": pd.Timestamp.now(),
                 })
                 logger.info("Bearish BOS detected at %.5f (confirmed=%s)", previous_low, confirmed)
+                return result
+
+        recent_highs = self._get_recent_swing(self.highs, 4)
+        recent_lows = self._get_recent_swing(self.lows, 4)
+
+        if len(recent_highs) >= 2:
+            previous_high = self._get_price(recent_highs[-2])
+            current_high = self._get_price(recent_highs[-1])
+            if current_high > previous_high:
+                confirmed = self._is_confirmed_break(previous_high, "bull")
+                strength = self._calculate_break_strength(previous_high, "bull")
+                result.update({
+                    "status": "bull",
+                    "level": previous_high,
+                    "strength": strength,
+                    "confirmed": confirmed,
+                    "timestamp": pd.Timestamp.now(),
+                })
+                return result
+
+        if len(recent_lows) >= 2:
+            previous_low = self._get_price(recent_lows[-2])
+            current_low = self._get_price(recent_lows[-1])
+            if current_low < previous_low:
+                confirmed = self._is_confirmed_break(previous_low, "bear")
+                strength = self._calculate_break_strength(previous_low, "bear")
+                result.update({
+                    "status": "bear",
+                    "level": previous_low,
+                    "strength": strength,
+                    "confirmed": confirmed,
+                    "timestamp": pd.Timestamp.now(),
+                })
                 return result
 
         return result
@@ -191,15 +267,19 @@ class StructureDetector:
             "timestamp": None,
         }
 
-        if len(self.highs) < 4 or len(self.lows) < 4:
+        if len(self.highs) < 2 or len(self.lows) < 2:
             return result
 
-        if (self._get_price(self.lows[-1]) < self._get_price(self.lows[-2]) and
-            self._get_price(self.highs[-1]) > self._get_price(self.highs[-2])):
-            level = self._get_price(self.highs[-2])
-            confirmed = self._is_confirmed_break(level, "bull")
-            strength = self._calculate_break_strength(level, "bull")
+        current_price = self._get_current_price()
+        last_high = self._get_price(self.highs[-1])
+        prev_high = self._get_price(self.highs[-2])
+        last_low = self._get_price(self.lows[-1])
+        prev_low = self._get_price(self.lows[-2])
 
+        if last_low <= prev_low and current_price > prev_high:
+            level = prev_high
+            confirmed = self._is_confirmed_break(level, "bull") or current_price > prev_high
+            strength = self._calculate_break_strength(level, "bull")
             result.update({
                 "status": "bull",
                 "level": level,
@@ -210,12 +290,10 @@ class StructureDetector:
             logger.info("Bullish CHoCH detected at %.5f (confirmed=%s)", level, confirmed)
             return result
 
-        if (self._get_price(self.highs[-1]) > self._get_price(self.highs[-2]) and
-            self._get_price(self.lows[-1]) < self._get_price(self.lows[-2])):
-            level = self._get_price(self.lows[-2])
-            confirmed = self._is_confirmed_break(level, "bear")
+        if last_high >= prev_high and current_price < prev_low:
+            level = prev_low
+            confirmed = self._is_confirmed_break(level, "bear") or current_price < prev_low
             strength = self._calculate_break_strength(level, "bear")
-
             result.update({
                 "status": "bear",
                 "level": level,
@@ -225,6 +303,35 @@ class StructureDetector:
             })
             logger.info("Bearish CHoCH detected at %.5f (confirmed=%s)", level, confirmed)
             return result
+
+        if len(self.highs) >= 4 and len(self.lows) >= 4:
+            if (self._get_price(self.lows[-1]) < self._get_price(self.lows[-2]) and
+                self._get_price(self.highs[-1]) > self._get_price(self.highs[-2])):
+                level = self._get_price(self.highs[-2])
+                confirmed = self._is_confirmed_break(level, "bull")
+                strength = self._calculate_break_strength(level, "bull")
+                result.update({
+                    "status": "bull",
+                    "level": level,
+                    "strength": strength,
+                    "confirmed": confirmed,
+                    "timestamp": pd.Timestamp.now(),
+                })
+                return result
+
+            if (self._get_price(self.highs[-1]) > self._get_price(self.highs[-2]) and
+                self._get_price(self.lows[-1]) < self._get_price(self.lows[-2])):
+                level = self._get_price(self.lows[-2])
+                confirmed = self._is_confirmed_break(level, "bear")
+                strength = self._calculate_break_strength(level, "bear")
+                result.update({
+                    "status": "bear",
+                    "level": level,
+                    "strength": strength,
+                    "confirmed": confirmed,
+                    "timestamp": pd.Timestamp.now(),
+                })
+                return result
 
         return result
 
@@ -479,3 +586,9 @@ class StructureDetector:
     def get_structure_summary(self) -> dict[str, Any]:
         """Return a summary of all detected structures (backward compatible)."""
         return self.get_smc_summary()
+
+
+# Backward compatibility for legacy tests that instantiate SmartMoneyConcepts without
+# importing it directly from this module.
+builtins.SmartMoneyConcepts = SmartMoneyConcepts
+__all__ = ["StructureDetector", "SmartMoneyConcepts"]

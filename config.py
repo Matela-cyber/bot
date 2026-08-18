@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -53,24 +53,47 @@ class Settings:
     low_liquidity_reduce_risk: bool = os.getenv("LOW_LIQUIDITY_REDUCE_RISK", "false").lower() == "true"
     low_liquidity_block_start_utc: int = int(os.getenv("LOW_LIQUIDITY_BLOCK_START_UTC", "22"))
     low_liquidity_block_end_utc: int = int(os.getenv("LOW_LIQUIDITY_BLOCK_END_UTC", "2"))
-    # Multi-pair portfolio support
-    trading_pairs: list[str] = field(default_factory=lambda: os.getenv("TRADING_PAIRS", "EURUSD,GBPUSD,USDJPY,XAUUSD").split(","))
-    pair_risk_allocation: dict[str, float] = field(default_factory=lambda: {
-        "EURUSD": 0.005,
-        "GBPUSD": 0.005,
-        "USDJPY": 0.005,
-        "XAUUSD": 0.003,
-    })
-    pair_timeframes: dict[str, str] = field(default_factory=lambda: {
-        "EURUSD": "15m",
-        "GBPUSD": "15m",
-        "USDJPY": "15m",
-        "XAUUSD": "1h",
-    })
+    # Raw env strings for parsed properties
+    trading_pairs_raw: str = os.getenv("TRADING_PAIRS", "EURUSD,GBPUSD,USDJPY,AUDUSD,NZDUSD,USDCAD,USDCHF,EURGBP,EURAUD,GBPJPY")
+    pair_risk_allocation_raw: str = os.getenv("PAIR_RISK_ALLOCATION", "")
+    pair_timeframes_raw: str = os.getenv("PAIR_TIMEFRAMES", "")
     global_max_concurrent_positions: int = int(os.getenv("GLOBAL_MAX_CONCURRENT_POSITIONS", "3"))
     global_max_risk_percent: float = float(os.getenv("GLOBAL_MAX_RISK_PERCENT", "0.03"))
     global_daily_loss_limit: float = float(os.getenv("GLOBAL_DAILY_LOSS_LIMIT", "0.03"))
     global_drawdown_limit: float = float(os.getenv("GLOBAL_DRAWDOWN_LIMIT", "0.15"))
+    # Regime-based strategy settings
+    min_score: int = int(os.getenv("MIN_SCORE", "65"))
+    max_concurrent_positions: int = int(os.getenv("MAX_CONCURRENT_POSITIONS", "1"))
+
+    @property
+    def trading_pairs(self) -> list[str]:
+        """Parse trading pairs from environment."""
+        return [p.strip() for p in self.trading_pairs_raw.split(",") if p.strip()]
+
+    @property
+    def pair_risk_allocation(self) -> dict[str, float]:
+        """Parse pair-level risk allocation from environment."""
+        result: dict[str, float] = {}
+        if self.pair_risk_allocation_raw:
+            for part in self.pair_risk_allocation_raw.split(","):
+                if ":" in part:
+                    key, value = part.split(":", 1)
+                    try:
+                        result[key.strip()] = float(value.strip())
+                    except ValueError:
+                        continue
+        return result
+
+    @property
+    def pair_timeframes(self) -> dict[str, str]:
+        """Parse pair timeframes from environment."""
+        result: dict[str, str] = {}
+        if self.pair_timeframes_raw:
+            for part in self.pair_timeframes_raw.split(","):
+                if ":" in part:
+                    key, value = part.split(":", 1)
+                    result[key.strip()] = value.strip()
+        return result
 
     @staticmethod
     def _parse_scalar_map(raw: str) -> dict[str, float]:
@@ -119,11 +142,3 @@ GLOBAL_DAILY_LOSS_LIMIT = 0.03
 GLOBAL_DRAWDOWN_LIMIT = 0.15
 
 settings = Settings()
-settings.trading_pairs = TRADING_PAIRS
-settings.trading_pairs = TRADING_PAIRS
-settings.global_max_concurrent_positions = GLOBAL_MAX_CONCURRENT_POSITIONS
-settings.global_max_risk_percent = GLOBAL_MAX_RISK_PERCENT
-settings.global_daily_loss_limit = GLOBAL_DAILY_LOSS_LIMIT
-settings.global_drawdown_limit = GLOBAL_DRAWDOWN_LIMIT
-settings.pair_risk_allocation = PAIR_RISK_ALLOCATION
-settings.pair_timeframes = PAIR_TIMEFRAMES

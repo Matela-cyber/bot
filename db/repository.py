@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import date, datetime
-from typing import Any, Iterator
+from typing import Any
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
@@ -94,7 +95,7 @@ class Repository:
             conn.commit()
 
     @contextmanager
-    def session(self) -> Iterator[Session]:
+    def session(self) -> Generator[Session, None, None]:
         with self.Session() as session:
             try:
                 yield session
@@ -245,28 +246,38 @@ class Repository:
             if trade is None:
                 raise ValueError(f"Trade {trade_id} not found")
 
-            trade.exit_price = float(exit_price)
-            trade.pnl_amount = float(pnl)
-            trade.exit_reason = exit_reason
-            trade.pattern_name = pattern_name
-            trade.falcon_scores = serialized_scores
-            trade.mae_pips = int(mae)
-            trade.mfe_pips = int(mfe)
-            trade.hold_time_minutes = int(hold_time)
-            trade.pnl_percentage = float((float(pnl) / float(trade.entry_price)) * 100) if trade.entry_price else 0.0
+            entry_price_raw = getattr(trade, "entry_price", None)
+            entry_price = float(entry_price_raw) if entry_price_raw is not None else None
+
+            setattr(trade, "exit_price", float(exit_price))
+            setattr(trade, "pnl_amount", float(pnl))
+            setattr(trade, "exit_reason", exit_reason)
+            setattr(trade, "pattern_name", pattern_name)
+            setattr(trade, "falcon_scores", serialized_scores)
+            setattr(trade, "mae_pips", int(mae))
+            setattr(trade, "mfe_pips", int(mfe))
+            setattr(trade, "hold_time_minutes", int(hold_time))
+
+            if entry_price is not None and entry_price != 0.0:
+                setattr(trade, "pnl_percentage", float((float(pnl) / entry_price) * 100))
+            else:
+                setattr(trade, "pnl_percentage", 0.0)
 
     def get_trade_by_id(self, trade_id: str) -> Trade | None:
         with self.session() as session:
             return session.get(Trade, trade_id)
 
     def add_failed_order(self, payload: dict[str, Any]) -> None:
+        error_code_value = payload.get("error_code")
+        error_code = int(error_code_value) if error_code_value is not None else None
+
         failed_order = FailedOrder(
             symbol=payload.get("symbol", ""),
             order_type=payload.get("order_type"),
             volume=float(payload.get("volume") or 0.0),
             sl=float(payload.get("stop_loss") or 0.0),
             tp=float(payload.get("take_profit") or 0.0),
-            error_code=int(payload.get("error_code")) if payload.get("error_code") is not None else None,
+            error_code=error_code,
             error_message=payload.get("error_message"),
             payload=json.dumps(payload.get("payload", {}), default=str),
         )

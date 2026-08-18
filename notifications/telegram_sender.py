@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import requests
@@ -36,7 +36,7 @@ class TelegramSender:
         if isinstance(when, datetime):
             when = when.strftime("%Y-%m-%d %H:%M UTC")
         elif when is None:
-            when = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+            when = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
         ticket = execution_result.get("ticket") or execution_result.get("order_id") or "N/A"
         mode = execution_result.get("mode", "live")

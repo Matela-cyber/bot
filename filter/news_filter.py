@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 
 import pytz
@@ -83,7 +83,8 @@ class NewsFilter:
                 event_date = date_cell.get_text(strip=True)
                 event_time = time_cell.get_text(strip=True)
                 currency = currency_cell.get_text(strip=True)
-                impact = impact_cell.get("title", impact_cell.get_text(strip=True)).strip()
+                impact_value = impact_cell.get("title", impact_cell.get_text(strip=True))
+                impact = str(impact_value).strip() if impact_value else ""
                 event_name = event_cell.get_text(strip=True)
 
                 if event_date != expected_date:

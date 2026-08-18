@@ -70,6 +70,7 @@ class TradingFilter:
             logger.info("TradingFilter: Blocked due to market hours (%s)", market_reason)
             return result
 
+        news_reason = "news_filter_disabled"
         if settings.news_filter_enabled:
             result["checks_passed"] += 1
             news_trade, news_reason = self.news_filter.should_trade(utc_time)

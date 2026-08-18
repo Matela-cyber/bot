@@ -489,3 +489,166 @@ RuntimeError: MT5 initialization failed: (-10005, 'IPC timeout')
 2026-08-10 13:11:36,585 | INFO | main | XAUUSD: Decision engine returned HOLD
 2026-08-10 13:11:36,586 | INFO | main | Portfolio summary: 0 positions, Daily PnL: $0.00
 2026-08-10 13:26:36,587 | INFO | main | Starting bot cycle
+2026-08-16 11:58:10,392 | INFO | bot | Bot started
+2026-08-16 11:58:10,393 | INFO | bot | Starting bot cycle
+2026-08-16 11:58:10,393 | ERROR | bot | Bot crashed: 'NoneType' object has no attribute 'is_weekend'
+Traceback (most recent call last):
+  File "C:\Users\Lenovo\Desktop\bot\main.py", line 170, in main
+    bot.run_cycle()
+    ~~~~~~~~~~~~~^^
+  File "C:\Users\Lenovo\Desktop\bot\main.py", line 56, in run_cycle
+    filter_result = self.trading_filter.should_trade(current_time)
+  File "C:\Users\Lenovo\Desktop\bot\filter\trading_filter.py", line 45, in should_trade
+    weekend = self.weekend_filter.is_weekend(utc_time)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'is_weekend'
+2026-08-16 11:59:18,742 | INFO | bot | Bot started
+2026-08-16 11:59:18,743 | INFO | bot | Starting bot cycle
+2026-08-16 11:59:18,743 | INFO | bot | Trading blocked: weekend_trading_blocked
+2026-08-17 10:33:52,639 | INFO | bot | Bot started
+2026-08-17 10:33:52,639 | INFO | bot | Starting bot cycle
+2026-08-17 10:33:59,732 | INFO | bot | Market regime: mixed (ADX=45.79)
+2026-08-17 10:33:59,733 | INFO | bot | Mixed regime detected, skipping cycle
+2026-08-17 10:41:17,799 | INFO | bot | Bot stopped by user
+2026-08-17 10:41:36,923 | INFO | bot | Bot started
+2026-08-17 10:41:36,924 | INFO | bot | Starting bot cycle
+2026-08-17 10:41:39,405 | INFO | bot | Market regime: mixed (ADX=21.42)
+2026-08-17 10:41:39,406 | INFO | bot | Mixed regime detected, skipping cycle
+2026-08-17 10:43:36,767 | INFO | bot | Bot stopped by user
+2026-08-17 13:33:11,770 | INFO | bot | Bot started
+2026-08-17 13:33:11,771 | INFO | bot | Starting bot cycle
+2026-08-17 13:33:18,867 | INFO | bot | Market regime: trending (ADX=27.04)
+2026-08-17 13:33:18,891 | INFO | bot | Signal scored: 20 (grade=NO TRADE)
+2026-08-17 13:33:18,894 | INFO | bot | Score 20 < 65 threshold, skipping
+2026-08-17 13:34:19,037 | INFO | bot | Bot stopped by user
+2026-08-17 13:34:58,525 | INFO | bot | Bot started
+2026-08-17 13:34:58,525 | INFO | bot | Starting bot cycle
+2026-08-17 13:35:01,188 | INFO | bot | Market regime: trending (ADX=27.04)
+2026-08-17 13:35:01,191 | INFO | bot | Signal scored: 20 (grade=NO TRADE)
+2026-08-17 13:35:01,191 | INFO | bot | Score 20 < 65 threshold, skipping
+2026-08-17 13:38:22,929 | INFO | bot | Bot stopped by user
+2026-08-17 13:38:31,001 | INFO | bot | Bot started
+2026-08-17 13:38:31,001 | INFO | bot | Starting bot cycle
+2026-08-17 13:38:33,692 | INFO | bot | EURUSD: Market regime: ranging (ADX=17.62)
+2026-08-17 13:38:33,698 | INFO | bot | EURUSD: No signal generated
+2026-08-17 13:38:36,139 | INFO | bot | GBPUSD: Market regime: mixed (ADX=23.89)
+2026-08-17 13:38:36,139 | INFO | bot | GBPUSD: Mixed regime detected, skipping
+2026-08-17 13:38:38,603 | INFO | bot | USDJPY: Market regime: ranging (ADX=11.46)
+2026-08-17 13:38:38,609 | INFO | bot | USDJPY: No signal generated
+2026-08-17 13:38:40,952 | INFO | bot | AUDUSD: Market regime: mixed (ADX=24.38)
+2026-08-17 13:38:40,953 | INFO | bot | AUDUSD: Mixed regime detected, skipping
+2026-08-17 13:38:47,846 | INFO | bot | NZDUSD: Market regime: ranging (ADX=18.41)
+2026-08-17 13:38:47,852 | INFO | bot | NZDUSD: No signal generated
+2026-08-17 13:38:56,374 | INFO | bot | USDCAD: Market regime: mixed (ADX=32.13)
+2026-08-17 13:38:56,374 | INFO | bot | USDCAD: Mixed regime detected, skipping
+2026-08-17 13:38:58,941 | INFO | bot | USDCHF: Market regime: mixed (ADX=45.35)
+2026-08-17 13:38:58,941 | INFO | bot | USDCHF: Mixed regime detected, skipping
+2026-08-17 13:39:07,413 | INFO | bot | EURGBP: Market regime: ranging (ADX=17.52)
+2026-08-17 13:39:07,418 | INFO | bot | EURGBP: No signal generated
+2026-08-17 13:39:24,220 | INFO | bot | EURAUD: Market regime: trending (ADX=26.41)
+2026-08-17 13:39:24,247 | INFO | bot | EURAUD: Signal scored: 20 (grade=NO TRADE)
+2026-08-17 13:39:24,247 | INFO | bot | EURAUD: Score 20 < 65 threshold, skipping
+2026-08-17 13:39:36,509 | INFO | bot | GBPJPY: Market regime: trending (ADX=48.40)
+2026-08-17 13:39:36,515 | INFO | bot | GBPJPY: Signal scored: 40 (grade=NO TRADE)
+2026-08-17 13:39:36,516 | INFO | bot | GBPJPY: Score 40 < 65 threshold, skipping
+2026-08-17 13:39:36,516 | INFO | bot | Portfolio summary: 0 positions, Daily PnL: $0.00
+2026-08-17 13:50:24,505 | INFO | bot | Bot started
+2026-08-17 13:50:24,506 | INFO | bot | Starting bot cycle
+2026-08-17 13:50:28,250 | INFO | bot | EURUSD: Market regime: ranging (ADX=19.77)
+2026-08-17 13:50:28,263 | INFO | bot | EURUSD: Signal scored: 0 (grade=NO TRADE)
+2026-08-17 13:50:28,263 | INFO | bot | EURUSD: Score 0 < 65 threshold, skipping
+2026-08-17 13:50:30,858 | INFO | bot | GBPUSD: Market regime: mixed (ADX=23.89)
+2026-08-17 13:50:30,858 | INFO | bot | GBPUSD: Mixed regime detected, skipping
+2026-08-17 13:50:33,312 | INFO | bot | USDJPY: Market regime: mixed (ADX=22.92)
+2026-08-17 13:50:33,312 | INFO | bot | USDJPY: Mixed regime detected, skipping
+2026-08-17 13:50:35,359 | INFO | bot | AUDUSD: Market regime: mixed (ADX=23.25)
+2026-08-17 13:50:35,359 | INFO | bot | AUDUSD: Mixed regime detected, skipping
+2026-08-17 13:50:37,173 | INFO | bot | NZDUSD: Market regime: ranging (ADX=18.41)
+2026-08-17 13:50:37,179 | INFO | bot | NZDUSD: No signal generated
+2026-08-17 13:50:39,575 | INFO | bot | USDCAD: Market regime: mixed (ADX=32.13)
+2026-08-17 13:50:39,575 | INFO | bot | USDCAD: Mixed regime detected, skipping
+2026-08-17 13:50:42,977 | INFO | bot | USDCHF: Market regime: mixed (ADX=45.35)
+2026-08-17 13:50:42,977 | INFO | bot | USDCHF: Mixed regime detected, skipping
+2026-08-17 13:50:46,660 | INFO | bot | EURGBP: Market regime: ranging (ADX=17.52)
+2026-08-17 13:50:46,666 | INFO | bot | EURGBP: No signal generated
+2026-08-17 13:50:49,389 | INFO | bot | EURAUD: Market regime: trending (ADX=26.41)
+2026-08-17 13:50:49,396 | INFO | bot | EURAUD: Signal scored: 20 (grade=NO TRADE)
+2026-08-17 13:50:49,397 | INFO | bot | EURAUD: Score 20 < 65 threshold, skipping
+2026-08-17 13:50:51,536 | INFO | bot | GBPJPY: Market regime: trending (ADX=48.40)
+2026-08-17 13:50:51,544 | INFO | bot | GBPJPY: Signal scored: 40 (grade=NO TRADE)
+2026-08-17 13:50:51,544 | INFO | bot | GBPJPY: Score 40 < 65 threshold, skipping
+2026-08-17 13:50:51,544 | INFO | bot | Portfolio summary: 0 positions, Daily PnL: $0.00
+2026-08-17 14:05:51,546 | INFO | bot | Starting bot cycle
+2026-08-17 14:05:54,630 | INFO | bot | EURUSD: Market regime: mixed (ADX=20.76)
+2026-08-17 14:05:54,630 | INFO | bot | EURUSD: Mixed regime detected, skipping
+2026-08-17 14:05:57,118 | INFO | bot | GBPUSD: Market regime: mixed (ADX=23.89)
+2026-08-17 14:05:57,118 | INFO | bot | GBPUSD: Mixed regime detected, skipping
+2026-08-17 14:05:59,443 | INFO | bot | USDJPY: Market regime: mixed (ADX=22.92)
+2026-08-17 14:05:59,443 | INFO | bot | USDJPY: Mixed regime detected, skipping
+2026-08-17 14:06:01,953 | INFO | bot | AUDUSD: Market regime: mixed (ADX=21.67)
+2026-08-17 14:06:01,953 | INFO | bot | AUDUSD: Mixed regime detected, skipping
+2026-08-17 14:06:04,207 | INFO | bot | NZDUSD: Market regime: ranging (ADX=18.41)
+2026-08-17 14:06:04,212 | INFO | bot | NZDUSD: No signal generated
+2026-08-17 14:06:06,564 | INFO | bot | USDCAD: Market regime: mixed (ADX=32.13)
+2026-08-17 14:06:06,565 | INFO | bot | USDCAD: Mixed regime detected, skipping
+2026-08-17 14:06:09,154 | INFO | bot | USDCHF: Market regime: mixed (ADX=45.35)
+2026-08-17 14:06:09,155 | INFO | bot | USDCHF: Mixed regime detected, skipping
+2026-08-17 14:06:11,342 | INFO | bot | EURGBP: Market regime: ranging (ADX=17.52)
+2026-08-17 14:06:11,348 | INFO | bot | EURGBP: No signal generated
+2026-08-17 14:06:13,545 | INFO | bot | EURAUD: Market regime: trending (ADX=26.41)
+2026-08-17 14:06:13,552 | INFO | bot | EURAUD: Signal scored: 20 (grade=NO TRADE)
+2026-08-17 14:06:13,553 | INFO | bot | EURAUD: Score 20 < 65 threshold, skipping
+2026-08-17 14:06:15,581 | INFO | bot | GBPJPY: Market regime: trending (ADX=49.64)
+2026-08-17 14:06:15,588 | INFO | bot | GBPJPY: Signal scored: 20 (grade=NO TRADE)
+2026-08-17 14:06:15,588 | INFO | bot | GBPJPY: Score 20 < 65 threshold, skipping
+2026-08-17 14:06:15,588 | INFO | bot | Portfolio summary: 0 positions, Daily PnL: $0.00
+2026-08-17 14:21:15,590 | INFO | bot | Starting bot cycle
+2026-08-17 14:21:18,039 | INFO | bot | EURUSD: Market regime: mixed (ADX=22.74)
+2026-08-17 14:21:18,040 | INFO | bot | EURUSD: Mixed regime detected, skipping
+2026-08-17 14:21:20,053 | INFO | bot | GBPUSD: Market regime: trending (ADX=31.09)
+2026-08-17 14:21:20,070 | INFO | bot | GBPUSD: Signal scored: 40 (grade=NO TRADE)
+2026-08-17 14:21:20,071 | INFO | bot | GBPUSD: Score 40 < 65 threshold, skipping
+2026-08-17 14:21:22,045 | INFO | bot | USDJPY: Market regime: mixed (ADX=24.15)
+2026-08-17 14:21:22,045 | INFO | bot | USDJPY: Mixed regime detected, skipping
+2026-08-17 14:21:24,215 | INFO | bot | AUDUSD: Market regime: mixed (ADX=20.20)
+2026-08-17 14:21:24,215 | INFO | bot | AUDUSD: Mixed regime detected, skipping
+2026-08-17 14:21:26,055 | INFO | bot | NZDUSD: Market regime: ranging (ADX=18.12)
+2026-08-17 14:21:26,068 | INFO | bot | NZDUSD: No signal generated
+2026-08-17 14:21:28,350 | INFO | bot | USDCAD: Market regime: trending (ADX=34.16)
+2026-08-17 14:21:28,368 | INFO | bot | USDCAD: Signal scored: 40 (grade=NO TRADE)
+2026-08-17 14:21:28,368 | INFO | bot | USDCAD: Score 40 < 65 threshold, skipping
+2026-08-17 14:21:30,698 | INFO | bot | USDCHF: Market regime: mixed (ADX=22.28)
+2026-08-17 14:21:30,698 | INFO | bot | USDCHF: Mixed regime detected, skipping
+2026-08-17 14:21:32,869 | INFO | bot | EURGBP: Market regime: mixed (ADX=24.44)
+2026-08-17 14:21:32,870 | INFO | bot | EURGBP: Mixed regime detected, skipping
+2026-08-17 14:21:35,056 | INFO | bot | EURAUD: Market regime: mixed (ADX=24.15)
+2026-08-17 14:21:35,057 | INFO | bot | EURAUD: Mixed regime detected, skipping
+2026-08-17 14:21:37,432 | INFO | bot | GBPJPY: Market regime: trending (ADX=49.64)
+2026-08-17 14:21:37,447 | INFO | bot | GBPJPY: Signal scored: 20 (grade=NO TRADE)
+2026-08-17 14:21:37,447 | INFO | bot | GBPJPY: Score 20 < 65 threshold, skipping
+2026-08-17 14:21:37,448 | INFO | bot | Portfolio summary: 0 positions, Daily PnL: $0.00
+2026-08-17 14:44:22,893 | INFO | bot | Starting bot cycle
+2026-08-17 14:44:26,964 | INFO | bot | EURUSD: Market regime: mixed (ADX=24.61)
+2026-08-17 14:44:26,964 | INFO | bot | EURUSD: Mixed regime detected, skipping
+2026-08-17 14:44:29,344 | INFO | bot | GBPUSD: Market regime: trending (ADX=29.83)
+2026-08-17 14:44:29,357 | INFO | bot | GBPUSD: Signal scored: 20 (grade=NO TRADE)
+2026-08-17 14:44:29,358 | INFO | bot | GBPUSD: Score 20 < 65 threshold, skipping
+2026-08-17 14:44:31,670 | INFO | bot | USDJPY: Market regime: mixed (ADX=23.67)
+2026-08-17 14:44:31,670 | INFO | bot | USDJPY: Mixed regime detected, skipping
+2026-08-17 14:44:33,819 | INFO | bot | AUDUSD: Market regime: ranging (ADX=19.27)
+2026-08-17 14:44:33,826 | INFO | bot | AUDUSD: No signal generated
+2026-08-17 14:44:36,047 | INFO | bot | NZDUSD: Market regime: mixed (ADX=20.20)
+2026-08-17 14:44:36,048 | INFO | bot | NZDUSD: Mixed regime detected, skipping
+2026-08-17 14:44:38,420 | INFO | bot | USDCAD: Market regime: trending (ADX=33.43)
+2026-08-17 14:44:38,429 | INFO | bot | USDCAD: Signal scored: 40 (grade=NO TRADE)
+2026-08-17 14:44:38,429 | INFO | bot | USDCAD: Score 40 < 65 threshold, skipping
+2026-08-17 14:44:40,663 | INFO | bot | USDCHF: Market regime: mixed (ADX=22.93)
+2026-08-17 14:44:40,663 | INFO | bot | USDCHF: Mixed regime detected, skipping
+2026-08-17 14:44:42,895 | INFO | bot | EURGBP: Market regime: mixed (ADX=27.90)
+2026-08-17 14:44:42,895 | INFO | bot | EURGBP: Mixed regime detected, skipping
+2026-08-17 14:44:44,809 | INFO | bot | EURAUD: Market regime: mixed (ADX=23.78)
+2026-08-17 14:44:44,809 | INFO | bot | EURAUD: Mixed regime detected, skipping
+2026-08-17 14:44:46,952 | INFO | bot | GBPJPY: Market regime: trending (ADX=49.64)
+2026-08-17 14:44:46,959 | INFO | bot | GBPJPY: Signal scored: 20 (grade=NO TRADE)
+2026-08-17 14:44:46,959 | INFO | bot | GBPJPY: Score 20 < 65 threshold, skipping
+2026-08-17 14:44:46,960 | INFO | bot | Portfolio summary: 0 positions, Daily PnL: $0.00

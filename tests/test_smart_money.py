@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-from structure.smart_money import SmartMoneyConcepts
+from smc.structure import StructureDetector
 
 
 def make_candles(values):

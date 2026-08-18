@@ -1,7 +1,7 @@
 import pandas as pd
 
 from config import settings
-from structure.smart_money import SmartMoneyConcepts
+from smc.structure import StructureDetector
 
 
 def make_candles(values, freq="15min"):

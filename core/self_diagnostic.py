@@ -26,23 +26,23 @@ class CycleReport:
 
     def add_success(self, msg: str) -> None:
         self.successes.append(msg)
-        logger.info("✅ %s", msg)
+        logger.info("SUCCESS: %s", msg)
 
     def add_warning(self, msg: str) -> None:
         self.warnings.append(msg)
-        logger.warning("⚠️ %s", msg)
+        logger.warning("WARNING: %s", msg)
 
     def add_error(self, msg: str) -> None:
         self.errors.append(msg)
-        logger.error("❌ %s", msg)
+        logger.error("ERROR: %s", msg)
 
     def add_check(self, name: str, passed: bool, detail: str = "") -> None:
         self.checks_passed[name] = passed
         self.checks_details[name] = detail
         if passed:
-            logger.debug("✅ %s: %s", name, detail or "passed")
+            logger.debug("CHECK PASSED: %s: %s", name, detail or "passed")
         else:
-            logger.warning("❌ %s: %s", name, detail or "failed")
+            logger.warning("CHECK FAILED: %s: %s", name, detail or "failed")
 
     def is_healthy(self) -> bool:
         if self.errors:
@@ -53,7 +53,7 @@ class CycleReport:
 
     def summary(self) -> str:
         lines = [
-            f"📊 CYCLE REPORT: {self.cycle_type}",
+            f"CYCLE REPORT: {self.cycle_type}",
             f"   Time: {self.timestamp}",
             f"   Pairs: {self.pairs_processed} processed, {self.pairs_skipped} skipped",
             f"   Signals: {self.signals_generated}",
@@ -61,9 +61,9 @@ class CycleReport:
             f"   Checks: {sum(1 for passed in self.checks_passed.values() if passed)}/{len(self.checks_passed)} passed",
         ]
         if self.errors:
-            lines.append(f"   ❌ Errors: {len(self.errors)}")
+            lines.append(f"   Errors: {len(self.errors)}")
         if self.warnings:
-            lines.append(f"   ⚠️ Warnings: {len(self.warnings)}")
+            lines.append(f"   Warnings: {len(self.warnings)}")
         if self.successes:
-            lines.append(f"   ✅ Successes: {len(self.successes)}")
+            lines.append(f"   Successes: {len(self.successes)}")
         return "\n".join(lines)

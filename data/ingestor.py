@@ -116,6 +116,35 @@ class DataIngestor:
             return 1
         raise ValueError(f"Unsupported timeframe for bar calculation: {self.timeframe}")
 
+    def _resolve_mt5_symbol(self, mt5_module: Any, symbol: str) -> str:
+        """Resolve a configured pair to the broker's exact MT5 symbol name."""
+        requested = symbol.strip().upper()
+        if mt5_module.symbol_info(requested) is not None:
+            if hasattr(mt5_module, "symbol_select"):
+                mt5_module.symbol_select(requested, True)
+            return requested
+
+        symbols_get = getattr(mt5_module, "symbols_get", None)
+        if symbols_get is None:
+            raise RuntimeError(f"Symbol {requested} not found in MT5 and symbol discovery is unavailable")
+
+        normalized_requested = "".join(character for character in requested if character.isalnum())
+        candidates = cast(list[Any], symbols_get() or [])
+        matches: list[str] = []
+        for candidate in candidates:
+            candidate_name = str(getattr(candidate, "name", candidate))
+            normalized_candidate = "".join(character for character in candidate_name.upper() if character.isalnum())
+            if normalized_candidate == normalized_requested or normalized_candidate.startswith(normalized_requested):
+                matches.append(candidate_name)
+
+        if not matches:
+            raise RuntimeError(f"Symbol {requested} not found in MT5; configure the broker symbol name")
+
+        resolved = sorted(matches, key=lambda name: (len(name), name))[0]
+        if hasattr(mt5_module, "symbol_select") and not mt5_module.symbol_select(resolved, True):
+            raise RuntimeError(f"MT5 could not select resolved symbol {resolved} for {requested}")
+        return resolved
+
     def _fetch_mt5_frame(self, days: int, symbol: str = "EURUSD") -> pd.DataFrame:
         mt5_module = self._require_mt5_module()
         if not settings.mt5_account or not settings.mt5_password or not settings.mt5_server:
@@ -130,9 +159,10 @@ class DataIngestor:
 
         try:
             bars = max(days, 1) * self._bars_per_day()
-            rates = mt5_module.copy_rates_from_pos(symbol, self._resolve_mt5_timeframe(), 0, bars)
+            resolved_symbol = self._resolve_mt5_symbol(mt5_module, symbol)
+            rates = mt5_module.copy_rates_from_pos(resolved_symbol, self._resolve_mt5_timeframe(), 0, bars)
             if rates is None or len(rates) == 0:
-                raise RuntimeError(f"MT5 returned no OHLCV bars for {symbol}")
+                raise RuntimeError(f"MT5 returned no OHLCV bars for {resolved_symbol}")
 
             frame = pd.DataFrame(rates)
             frame["time"] = pd.to_datetime(frame["time"], unit="s", utc=True)

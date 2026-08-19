@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 mt5: Any = None
 try:
@@ -30,10 +30,32 @@ class MT5Client:
             raise RuntimeError("MetaTrader5 is not installed. Install it with 'pip install MetaTrader5'.")
         return mt5
 
+    def _connection_is_alive(self, mt5_module: Any) -> bool:
+        """Check whether the terminal session behind the cached flag is still usable."""
+        if not self.connected:
+            return False
+
+        terminal_info = getattr(mt5_module, "terminal_info", None)
+        if callable(terminal_info):
+            try:
+                return terminal_info() is not None
+            except Exception:
+                return False
+
+        account_info = getattr(mt5_module, "account_info", None)
+        if callable(account_info):
+            try:
+                return account_info() is not None
+            except Exception:
+                return False
+
+        return True
+
     def connect(self) -> bool:
         mt5_module = self._require_mt5()
-        if self.connected:
+        if self._connection_is_alive(mt5_module):
             return True
+        self.connected = False
         if not self.account or not self.password or not self.server:
             raise RuntimeError("MT5 account, password, and server must be configured in .env")
 
@@ -67,27 +89,76 @@ class MT5Client:
             raise RuntimeError("MT5 account_info returned no data")
         return float(account_info.equity)
 
+    def resolve_symbol(self, symbol: str) -> str:
+        """Resolve a configured pair to the broker's exact MT5 symbol name."""
+        self.connect()
+        mt5_module = self._require_mt5()
+        requested = symbol.strip().upper()
+        if not requested:
+            raise ValueError("MT5 symbol cannot be empty")
+
+        exact_info = mt5_module.symbol_info(requested)
+        if exact_info is not None:
+            if hasattr(mt5_module, "symbol_select"):
+                mt5_module.symbol_select(requested, True)
+            return requested
+
+        symbols_get = getattr(mt5_module, "symbols_get", None)
+        if symbols_get is None:
+            raise RuntimeError(f"Symbol {requested} not found in MT5 and symbol discovery is unavailable")
+
+        candidates = cast(list[Any], symbols_get() or [])
+        normalized_requested = "".join(character for character in requested if character.isalnum())
+        matches: list[str] = []
+        for candidate in candidates:
+            candidate_name = str(getattr(candidate, "name", candidate))
+            normalized_candidate = "".join(character for character in candidate_name.upper() if character.isalnum())
+            if normalized_candidate == normalized_requested or normalized_candidate.startswith(normalized_requested):
+                matches.append(candidate_name)
+
+        if not matches:
+            raise RuntimeError(f"Symbol {requested} not found in MT5; configure the broker symbol name")
+
+        resolved = sorted(matches, key=lambda name: (len(name), name))[0]
+        if hasattr(mt5_module, "symbol_select") and not mt5_module.symbol_select(resolved, True):
+            raise RuntimeError(f"MT5 could not select resolved symbol {resolved} for {requested}")
+        logger.info("Resolved broker symbol %s -> %s", requested, resolved)
+        return resolved
+
     def get_price(self, symbol: str) -> dict[str, float]:
         self.connect()
         mt5_module = self._require_mt5()
-        tick = mt5_module.symbol_info_tick(symbol)
+        resolved_symbol = self.resolve_symbol(symbol)
+        tick = mt5_module.symbol_info_tick(resolved_symbol)
         if tick is None:
-            raise RuntimeError(f"MT5 could not fetch tick data for {symbol}")
+            raise RuntimeError(f"MT5 could not fetch tick data for {resolved_symbol}")
         return {"bid": float(tick.bid), "ask": float(tick.ask)}
+
+    @staticmethod
+    def _rate_value(rate: Any, field: str) -> float:
+        """Read a rate field from an MT5 structured record or object row."""
+        try:
+            return float(getattr(rate, field))
+        except AttributeError:
+            try:
+                return float(rate[field])
+            except (KeyError, IndexError, TypeError) as exc:
+                raise RuntimeError(f"MT5 rate row is missing field '{field}'") from exc
 
     def get_atr(self, symbol: str, period: int = 14) -> float:
         self.connect()
         mt5_module = self._require_mt5()
+        resolved_symbol = self.resolve_symbol(symbol)
 
-        ticks = mt5_module.copy_rates_from_pos(symbol, mt5_module.TIMEFRAME_M15, 0, period + 1)
-        if not ticks or len(ticks) < period + 1:
-            raise RuntimeError(f"MT5 could not fetch enough OHLCV bars for ATR on {symbol}")
+        ticks = mt5_module.copy_rates_from_pos(resolved_symbol, mt5_module.TIMEFRAME_M15, 0, period + 1)
+        if ticks is None or len(ticks) < period + 1:
+            raise RuntimeError(f"MT5 could not fetch enough OHLCV bars for ATR on {resolved_symbol}")
 
         true_ranges: list[float] = []
         for i in range(1, len(ticks)):
-            high = float(ticks[i].high)
-            low = float(ticks[i].low)
-            prev_close = float(ticks[i - 1].close)
+            high = self._rate_value(ticks[i], "high")
+            low = self._rate_value(ticks[i], "low")
+            prev_close = self._rate_value(ticks[i - 1], "close")
             true_range = max(high - low, abs(high - prev_close), abs(low - prev_close))
             true_ranges.append(true_range)
 
@@ -106,15 +177,16 @@ class MT5Client:
     ) -> tuple[float, float, float]:
         self.connect()
         mt5_module = self._require_mt5()
-        tick = mt5_module.symbol_info_tick(symbol)
+        resolved_symbol = self.resolve_symbol(symbol)
+        tick = mt5_module.symbol_info_tick(resolved_symbol)
         if tick is None:
-            raise RuntimeError(f"MT5 could not fetch tick data for {symbol}")
+            raise RuntimeError(f"MT5 could not fetch tick data for {resolved_symbol}")
 
         live_price = float(tick.ask) if direction.lower() == "buy" else float(tick.bid)
         if abs(entry - live_price) <= 0.0005:
             return entry, sl, tp
 
-        atr = self.get_atr(symbol)
+        atr = self.get_atr(resolved_symbol)
         if direction.lower() == "buy":
             new_sl = live_price - atr * 1.5
             new_tp = live_price + atr * 3.0
@@ -228,6 +300,7 @@ class MT5Client:
         """Place a market order with valid SL/TP using symbol info."""
         self.connect()
         mt5_module = self._require_mt5()
+        symbol = self.resolve_symbol(symbol)
 
         # Get symbol info
         symbol_info = mt5_module.symbol_info(symbol)

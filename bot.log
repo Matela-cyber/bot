@@ -681,3 +681,234 @@ AttributeError: 'NoneType' object has no attribute 'is_weekend'
 2026-08-18 08:07:01,128 | INFO | bot | GBPJPY: Signal scored: 40 (grade=NO TRADE)
 2026-08-18 08:07:01,128 | INFO | bot | GBPJPY: Score 40 < 65 threshold, skipping
 2026-08-18 08:07:01,128 | INFO | bot | Portfolio summary: 0 positions, Daily PnL: $0.00
+2026-08-19 06:51:35,843 | INFO | bot | EURUSD: 4H=trending | 1H=mixed | 15M=trending
+2026-08-19 06:51:35,976 | INFO | bot | EURUSD: Signal scored 53 (WEAK)
+2026-08-19 06:51:35,977 | INFO | bot | EURUSD: Score 53 < 65 threshold, skipping
+2026-08-19 06:51:46,188 | INFO | bot | GBPUSD: 4H=trending | 1H=ranging | 15M=mixed
+2026-08-19 06:51:46,209 | INFO | bot | GBPUSD: No signal generated
+2026-08-19 06:52:01,569 | INFO | bot | USDJPY: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 06:52:01,581 | INFO | bot | USDJPY: No signal generated
+2026-08-19 06:52:11,951 | INFO | bot | AUDUSD: 4H=mixed | 1H=mixed | 15M=ranging
+2026-08-19 06:52:11,980 | INFO | bot | AUDUSD: No signal generated
+2026-08-19 06:52:23,540 | INFO | bot | NZDUSD: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 06:52:23,553 | INFO | bot | NZDUSD: No signal generated
+2026-08-19 06:52:36,759 | INFO | bot | USDCAD: 4H=trending | 1H=trending | 15M=mixed
+2026-08-19 06:52:36,784 | INFO | bot | USDCAD: No signal generated
+2026-08-19 06:52:47,093 | INFO | bot | USDCHF: 4H=mixed | 1H=ranging | 15M=mixed
+2026-08-19 06:52:47,118 | INFO | bot | USDCHF: No signal generated
+2026-08-19 06:52:57,927 | INFO | bot | EURGBP: 4H=mixed | 1H=trending | 15M=mixed
+2026-08-19 06:52:57,939 | INFO | bot | EURGBP: No signal generated
+2026-08-19 06:53:08,984 | INFO | bot | EURAUD: 4H=mixed | 1H=mixed | 15M=trending
+2026-08-19 06:53:09,260 | INFO | bot | EURAUD: Signal scored 48 (NO TRADE)
+2026-08-19 06:53:09,261 | INFO | bot | EURAUD: Score 48 < 65 threshold, skipping
+2026-08-19 06:53:19,773 | INFO | bot | GBPJPY: 4H=mixed | 1H=ranging | 15M=mixed
+2026-08-19 06:53:19,788 | INFO | bot | GBPJPY: No signal generated
+2026-08-19 06:55:29,290 | INFO | bot | EURUSD: 4H=trending | 1H=mixed | 15M=trending
+2026-08-19 06:55:29,375 | INFO | bot | EURUSD: Signal scored 53 (WEAK)
+2026-08-19 06:55:29,376 | INFO | bot | EURUSD: Score 53 < 65 threshold, skipping
+2026-08-19 06:55:38,881 | INFO | bot | GBPUSD: 4H=trending | 1H=ranging | 15M=mixed
+2026-08-19 06:55:38,896 | INFO | bot | GBPUSD: No signal generated
+2026-08-19 06:55:48,303 | INFO | bot | USDJPY: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 06:55:48,328 | INFO | bot | USDJPY: No signal generated
+2026-08-19 06:55:57,484 | INFO | bot | AUDUSD: 4H=mixed | 1H=mixed | 15M=ranging
+2026-08-19 06:55:57,531 | INFO | bot | AUDUSD: No signal generated
+2026-08-19 06:56:05,858 | INFO | bot | NZDUSD: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 06:56:05,873 | INFO | bot | NZDUSD: No signal generated
+2026-08-19 06:56:14,107 | INFO | bot | USDCAD: 4H=trending | 1H=trending | 15M=mixed
+2026-08-19 06:56:14,120 | INFO | bot | USDCAD: No signal generated
+2026-08-19 06:56:23,289 | INFO | bot | USDCHF: 4H=mixed | 1H=ranging | 15M=mixed
+2026-08-19 06:56:23,302 | INFO | bot | USDCHF: No signal generated
+2026-08-19 06:56:32,261 | INFO | bot | EURGBP: 4H=mixed | 1H=trending | 15M=mixed
+2026-08-19 06:56:32,274 | INFO | bot | EURGBP: No signal generated
+2026-08-19 06:56:43,692 | INFO | bot | EURAUD: 4H=mixed | 1H=mixed | 15M=trending
+2026-08-19 06:56:43,816 | INFO | bot | EURAUD: Signal scored 48 (NO TRADE)
+2026-08-19 06:56:43,817 | INFO | bot | EURAUD: Score 48 < 65 threshold, skipping
+2026-08-19 06:56:52,891 | INFO | bot | GBPJPY: 4H=mixed | 1H=ranging | 15M=mixed
+2026-08-19 06:56:52,922 | INFO | bot | GBPJPY: No signal generated
+2026-08-19 06:59:01,601 | INFO | bot | EURUSD: 4H=trending | 1H=mixed | 15M=trending
+2026-08-19 06:59:01,680 | INFO | bot | EURUSD: Signal scored 53 (WEAK)
+2026-08-19 06:59:01,681 | INFO | bot | EURUSD: Score 53 < 65 threshold, skipping
+2026-08-19 06:59:10,308 | INFO | bot | GBPUSD: 4H=trending | 1H=ranging | 15M=mixed
+2026-08-19 06:59:10,323 | INFO | bot | GBPUSD: No signal generated
+2026-08-19 06:59:19,170 | INFO | bot | USDJPY: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 06:59:19,185 | INFO | bot | USDJPY: No signal generated
+2026-08-19 06:59:28,635 | INFO | bot | AUDUSD: 4H=trending | 1H=mixed | 15M=ranging
+2026-08-19 06:59:28,657 | INFO | bot | AUDUSD: No signal generated
+2026-08-19 06:59:38,099 | INFO | bot | NZDUSD: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 06:59:38,118 | INFO | bot | NZDUSD: No signal generated
+2026-08-19 06:59:47,488 | INFO | bot | USDCAD: 4H=trending | 1H=trending | 15M=mixed
+2026-08-19 06:59:47,501 | INFO | bot | USDCAD: No signal generated
+2026-08-19 06:59:57,382 | INFO | bot | USDCHF: 4H=mixed | 1H=ranging | 15M=mixed
+2026-08-19 06:59:57,396 | INFO | bot | USDCHF: No signal generated
+2026-08-19 07:00:08,369 | INFO | bot | EURGBP: 4H=mixed | 1H=trending | 15M=mixed
+2026-08-19 07:00:08,382 | INFO | bot | EURGBP: No signal generated
+2026-08-19 07:00:19,286 | INFO | bot | EURAUD: 4H=mixed | 1H=mixed | 15M=trending
+2026-08-19 07:00:19,433 | INFO | bot | EURAUD: Signal scored 48 (NO TRADE)
+2026-08-19 07:00:19,433 | INFO | bot | EURAUD: Score 48 < 65 threshold, skipping
+2026-08-19 07:00:32,225 | INFO | bot | GBPJPY: 4H=mixed | 1H=ranging | 15M=mixed
+2026-08-19 07:00:32,239 | INFO | bot | GBPJPY: No signal generated
+2026-08-19 07:02:42,494 | INFO | bot | EURUSD: 4H=trending | 1H=mixed | 15M=trending
+2026-08-19 07:02:42,568 | INFO | bot | EURUSD: Signal scored 53 (WEAK)
+2026-08-19 07:02:42,568 | INFO | bot | EURUSD: Score 53 < 65 threshold, skipping
+2026-08-19 07:02:52,678 | INFO | bot | GBPUSD: 4H=trending | 1H=ranging | 15M=mixed
+2026-08-19 07:02:52,695 | INFO | bot | GBPUSD: No signal generated
+2026-08-19 07:03:02,048 | INFO | bot | USDJPY: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 07:03:02,077 | INFO | bot | USDJPY: No signal generated
+2026-08-19 07:03:13,314 | INFO | bot | AUDUSD: 4H=trending | 1H=mixed | 15M=ranging
+2026-08-19 07:03:13,366 | INFO | bot | AUDUSD: No signal generated
+2026-08-19 07:03:22,293 | INFO | bot | NZDUSD: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 07:03:22,303 | INFO | bot | NZDUSD: No signal generated
+2026-08-19 07:03:30,963 | INFO | bot | USDCAD: 4H=trending | 1H=trending | 15M=mixed
+2026-08-19 07:03:30,976 | INFO | bot | USDCAD: No signal generated
+2026-08-19 07:03:40,432 | INFO | bot | USDCHF: 4H=mixed | 1H=ranging | 15M=mixed
+2026-08-19 07:03:40,447 | INFO | bot | USDCHF: No signal generated
+2026-08-19 07:03:49,865 | INFO | bot | EURGBP: 4H=mixed | 1H=trending | 15M=mixed
+2026-08-19 07:03:49,887 | INFO | bot | EURGBP: No signal generated
+2026-08-19 07:03:59,485 | INFO | bot | EURAUD: 4H=mixed | 1H=mixed | 15M=trending
+2026-08-19 07:03:59,595 | INFO | bot | EURAUD: Signal scored 48 (NO TRADE)
+2026-08-19 07:03:59,596 | INFO | bot | EURAUD: Score 48 < 65 threshold, skipping
+2026-08-19 07:04:09,021 | INFO | bot | GBPJPY: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 07:04:09,036 | INFO | bot | GBPJPY: No signal generated
+2026-08-19 07:06:17,973 | INFO | bot | EURUSD: 4H=trending | 1H=mixed | 15M=trending
+2026-08-19 07:06:18,101 | INFO | bot | EURUSD: Signal scored 53 (WEAK)
+2026-08-19 07:06:18,102 | INFO | bot | EURUSD: Score 53 < 65 threshold, skipping
+2026-08-19 07:06:27,768 | INFO | bot | GBPUSD: 4H=trending | 1H=ranging | 15M=mixed
+2026-08-19 07:06:27,797 | INFO | bot | GBPUSD: No signal generated
+2026-08-19 07:06:36,626 | INFO | bot | USDJPY: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 07:06:36,639 | INFO | bot | USDJPY: No signal generated
+2026-08-19 07:06:45,001 | INFO | bot | AUDUSD: 4H=mixed | 1H=mixed | 15M=ranging
+2026-08-19 07:06:45,019 | INFO | bot | AUDUSD: No signal generated
+2026-08-19 07:06:55,083 | INFO | bot | NZDUSD: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 07:06:55,095 | INFO | bot | NZDUSD: No signal generated
+2026-08-19 07:07:03,936 | INFO | bot | USDCAD: 4H=trending | 1H=trending | 15M=mixed
+2026-08-19 07:07:03,953 | INFO | bot | USDCAD: No signal generated
+2026-08-19 07:33:39,903 | INFO | bot | Test order plan: {'symbol': 'EURUSD', 'direction': 'buy', 'entry': 1.15863, 'stop_loss': 1.1581135714285715, 'take_profit': 1.159662857142857, 'lots': 0.1, 'live': True}
+2026-08-19 07:33:40,187 | INFO | bot | Test order accepted: {'status': 'accepted', 'order_id': '283290845', 'ticket': 283290845, 'comment': 'Request executed', 'entry_price': 1.15863, 'position': {'ticket': 361056258, 'symbol': 'EURUSD', 'volume': 0.1, 'entry_price': 1.1586400000000001, 'current_price': 1.15854, 'sl': 1.15811, 'tp': 1.15966, 'profit': -1.0}}
+2026-08-19 07:47:36,722 | INFO | bot | Bot starting...
+2026-08-19 07:47:44,187 | WARNING | bot | EURUSD unavailable in MT5; skipping it for this bot run
+2026-08-19 07:47:44,188 | WARNING | bot | GBPUSD unavailable in MT5; skipping it for this bot run
+2026-08-19 07:47:44,188 | WARNING | bot | USDJPY unavailable in MT5; skipping it for this bot run
+2026-08-19 07:47:44,188 | WARNING | bot | AUDUSD unavailable in MT5; skipping it for this bot run
+2026-08-19 07:47:44,189 | WARNING | bot | NZDUSD unavailable in MT5; skipping it for this bot run
+2026-08-19 07:47:44,189 | WARNING | bot | USDCAD unavailable in MT5; skipping it for this bot run
+2026-08-19 07:47:44,189 | WARNING | bot | USDCHF unavailable in MT5; skipping it for this bot run
+2026-08-19 07:47:44,190 | WARNING | bot | EURGBP unavailable in MT5; skipping it for this bot run
+2026-08-19 07:47:44,190 | WARNING | bot | EURAUD unavailable in MT5; skipping it for this bot run
+2026-08-19 07:47:44,190 | WARNING | bot | GBPJPY unavailable in MT5; skipping it for this bot run
+2026-08-19 07:47:44,191 | INFO | bot | CYCLE REPORT: micro
+   Time: 2026-08-19 05:47:44.186957+00:00
+   Pairs: 0 processed, 10 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 2/2 passed
+   Successes: 2
+2026-08-19 07:48:47,686 | INFO | bot | Bot stopped by user
+2026-08-19 07:51:34,631 | INFO | bot | Bot starting...
+2026-08-19 07:51:51,497 | INFO | bot | EURUSD: 4H=trending | 1H=mixed | 15M=trending
+2026-08-19 07:51:51,557 | INFO | bot | EURUSD: Signal scored 55 (WEAK)
+2026-08-19 07:51:51,558 | INFO | bot | EURUSD: Score 55 < 65 threshold, skipping
+2026-08-19 07:52:01,480 | INFO | bot | GBPUSD: 4H=trending | 1H=ranging | 15M=mixed
+2026-08-19 07:52:01,524 | INFO | bot | GBPUSD: No signal generated
+2026-08-19 07:52:10,017 | INFO | bot | USDJPY: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 07:52:10,026 | INFO | bot | USDJPY: No signal generated
+2026-08-19 07:52:18,138 | INFO | bot | AUDUSD: 4H=mixed | 1H=mixed | 15M=ranging
+2026-08-19 07:52:18,151 | INFO | bot | AUDUSD: No signal generated
+2026-08-19 07:52:26,268 | INFO | bot | NZDUSD: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 07:52:26,274 | INFO | bot | NZDUSD: No signal generated
+2026-08-19 07:52:34,348 | INFO | bot | USDCAD: 4H=trending | 1H=trending | 15M=mixed
+2026-08-19 07:52:34,354 | INFO | bot | USDCAD: No signal generated
+2026-08-19 07:52:42,461 | INFO | bot | USDCHF: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 07:52:42,466 | INFO | bot | USDCHF: No signal generated
+2026-08-19 07:52:50,576 | INFO | bot | EURGBP: 4H=mixed | 1H=trending | 15M=mixed
+2026-08-19 07:52:50,583 | INFO | bot | EURGBP: No signal generated
+2026-08-19 07:52:58,792 | INFO | bot | EURAUD: 4H=mixed | 1H=mixed | 15M=trending
+2026-08-19 07:52:58,798 | INFO | bot | EURAUD: Candlestick confirmed doji (+8%)
+2026-08-19 07:52:58,827 | INFO | bot | EURAUD: Signal scored 48 (NO TRADE)
+2026-08-19 07:52:58,828 | INFO | bot | EURAUD: Score 48 < 65 threshold, skipping
+2026-08-19 07:53:06,817 | INFO | bot | GBPJPY: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 07:53:06,822 | INFO | bot | GBPJPY: No signal generated
+2026-08-19 07:53:06,825 | INFO | bot | CYCLE REPORT: micro
+   Time: 2026-08-19 05:51:42.343724+00:00
+   Pairs: 0 processed, 10 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 2/2 passed
+   Successes: 2
+2026-08-19 07:55:15,706 | INFO | bot | EURUSD: 4H=trending | 1H=mixed | 15M=trending
+2026-08-19 07:55:15,713 | INFO | bot | EURUSD: Candlestick confirmed doji (+8%)
+2026-08-19 07:55:15,746 | INFO | bot | EURUSD: Signal scored 63 (WEAK)
+2026-08-19 07:55:15,746 | INFO | bot | EURUSD: Score 63 < 65 threshold, skipping
+2026-08-19 07:55:23,879 | INFO | bot | GBPUSD: 4H=trending | 1H=ranging | 15M=mixed
+2026-08-19 07:55:23,885 | INFO | bot | GBPUSD: No signal generated
+2026-08-19 07:55:31,951 | INFO | bot | USDJPY: 4H=trending | 1H=mixed | 15M=trending
+2026-08-19 07:55:31,989 | INFO | bot | USDJPY: Signal scored 40 (NO TRADE)
+2026-08-19 07:55:31,989 | INFO | bot | USDJPY: Score 40 < 65 threshold, skipping
+2026-08-19 07:55:40,070 | INFO | bot | AUDUSD: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 07:55:40,077 | INFO | bot | AUDUSD: No signal generated
+2026-08-19 07:55:48,196 | INFO | bot | NZDUSD: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 07:55:48,205 | INFO | bot | NZDUSD: No signal generated
+2026-08-19 07:55:56,571 | INFO | bot | USDCAD: 4H=trending | 1H=trending | 15M=mixed
+2026-08-19 07:55:56,577 | INFO | bot | USDCAD: No signal generated
+2026-08-19 07:56:04,999 | INFO | bot | USDCHF: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 07:56:05,006 | INFO | bot | USDCHF: No signal generated
+2026-08-19 07:56:13,260 | INFO | bot | EURGBP: 4H=mixed | 1H=trending | 15M=mixed
+2026-08-19 07:56:13,265 | INFO | bot | EURGBP: No signal generated
+2026-08-19 07:56:22,145 | INFO | bot | EURAUD: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 07:56:22,152 | INFO | bot | EURAUD: No signal generated
+2026-08-19 07:56:31,159 | INFO | bot | GBPJPY: 4H=mixed | 1H=ranging | 15M=mixed
+2026-08-19 07:56:31,166 | INFO | bot | GBPJPY: No signal generated
+2026-08-19 07:56:31,168 | INFO | bot | CYCLE REPORT: micro
+   Time: 2026-08-19 05:55:06.826029+00:00
+   Pairs: 0 processed, 10 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 2/2 passed
+   Successes: 2
+2026-08-19 07:58:39,537 | INFO | bot | EURUSD: 4H=trending | 1H=mixed | 15M=trending
+2026-08-19 07:58:39,583 | INFO | bot | EURUSD: Signal scored 55 (WEAK)
+2026-08-19 07:58:39,583 | INFO | bot | EURUSD: Score 55 < 65 threshold, skipping
+2026-08-19 07:58:47,609 | INFO | bot | GBPUSD: 4H=trending | 1H=ranging | 15M=mixed
+2026-08-19 07:58:47,615 | INFO | bot | GBPUSD: No signal generated
+2026-08-19 07:58:55,250 | INFO | bot | USDJPY: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 07:58:55,258 | INFO | bot | USDJPY: No signal generated
+2026-08-19 07:59:03,383 | INFO | bot | AUDUSD: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 07:59:03,387 | INFO | bot | AUDUSD: No signal generated
+2026-08-19 07:59:13,003 | INFO | bot | NZDUSD: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 07:59:13,011 | INFO | bot | NZDUSD: No signal generated
+2026-08-19 07:59:20,562 | INFO | bot | USDCAD: 4H=trending | 1H=trending | 15M=mixed
+2026-08-19 07:59:20,568 | INFO | bot | USDCAD: No signal generated
+2026-08-19 07:59:28,707 | INFO | bot | USDCHF: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 07:59:28,712 | INFO | bot | USDCHF: No signal generated
+2026-08-19 07:59:36,926 | INFO | bot | EURGBP: 4H=mixed | 1H=trending | 15M=mixed
+2026-08-19 07:59:36,931 | INFO | bot | EURGBP: No signal generated
+2026-08-19 08:00:03,690 | INFO | bot | Bot starting...
+2026-08-19 08:00:18,322 | INFO | bot | EURUSD: 4H=trending | 1H=mixed | 15M=trending
+2026-08-19 08:00:18,370 | INFO | bot | EURUSD: Signal scored 55 (WEAK)
+2026-08-19 08:00:18,371 | INFO | bot | EURUSD: Score 55 < 65 threshold, skipping
+2026-08-19 08:00:26,712 | INFO | bot | GBPUSD: 4H=trending | 1H=ranging | 15M=mixed
+2026-08-19 08:00:26,718 | INFO | bot | GBPUSD: No signal generated
+2026-08-19 08:00:35,074 | INFO | bot | USDJPY: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 08:00:35,080 | INFO | bot | USDJPY: No signal generated
+2026-08-19 08:00:43,460 | INFO | bot | AUDUSD: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 08:00:43,465 | INFO | bot | AUDUSD: No signal generated
+2026-08-19 08:00:51,716 | INFO | bot | NZDUSD: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 08:00:51,723 | INFO | bot | NZDUSD: No signal generated
+2026-08-19 08:00:59,799 | INFO | bot | USDCAD: 4H=trending | 1H=trending | 15M=mixed
+2026-08-19 08:00:59,807 | INFO | bot | USDCAD: No signal generated
+2026-08-19 08:01:08,037 | INFO | bot | USDCHF: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-19 08:01:08,045 | INFO | bot | USDCHF: No signal generated
+2026-08-19 08:01:16,575 | INFO | bot | EURGBP: 4H=mixed | 1H=trending | 15M=mixed
+2026-08-19 08:01:16,584 | INFO | bot | EURGBP: No signal generated
+2026-08-19 08:01:24,848 | INFO | bot | EURAUD: 4H=mixed | 1H=mixed | 15M=trending
+2026-08-19 08:01:24,935 | INFO | bot | EURAUD: Signal scored 48 (NO TRADE)
+2026-08-19 08:01:24,935 | INFO | bot | EURAUD: Score 48 < 65 threshold, skipping
+2026-08-19 08:01:33,375 | INFO | bot | GBPJPY: 4H=mixed | 1H=ranging | 15M=mixed
+2026-08-19 08:01:33,383 | INFO | bot | GBPJPY: No signal generated
+2026-08-19 08:01:33,385 | INFO | bot | CYCLE REPORT: standard
+   Time: 2026-08-19 06:00:09.799765+00:00
+   Pairs: 0 processed, 10 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 2/2 passed
+   Successes: 2
+2026-08-19 08:10:33,714 | INFO | bot | Bot stopped by user

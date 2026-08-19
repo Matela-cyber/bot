@@ -1,6 +1,7 @@
 """Self-aware, adaptive Forex trading bot."""
 from __future__ import annotations
 
+import argparse
 import time
 from datetime import date, datetime
 from typing import Any
@@ -65,6 +66,7 @@ class AdaptiveTradingBot:
         self.open_positions: dict[int, dict[str, Any]] = {}
         self.monitoring_positions: list[int] = []
         self.diagnostic_reports: list[CycleReport] = []
+        self._unavailable_symbols: set[str] = set()
         self._last_reset_date: date | None = None
         self.error_count = 0
         self.max_errors = 10
@@ -79,7 +81,7 @@ class AdaptiveTradingBot:
 
     def run(self) -> None:
         """Main bot loop with adaptive cycle timing."""
-        logger.info("🚀 Bot starting...")
+        logger.info("Bot starting...")
 
         initial_report = self.health_check()
         if not initial_report.is_healthy():
@@ -100,7 +102,6 @@ class AdaptiveTradingBot:
                 cycle_type = self._determine_cycle_type()
                 report = self.run_cycle(cycle_type)
                 self.diagnostic_reports.append(report)
-                print(report.summary())
                 logger.info(report.summary())
 
                 if report.errors:
@@ -120,14 +121,14 @@ class AdaptiveTradingBot:
                 time.sleep(sleep_time)
 
             except KeyboardInterrupt:
-                logger.info("🛑 Bot stopped by user")
+                logger.info("Bot stopped by user")
                 try:
                     self.telegram_sender.send("🛑 Bot stopped by user")
                 except Exception:
                     pass
                 break
             except Exception as exc:
-                logger.exception("💥 Unhandled error: %s", exc)
+                logger.exception("Unhandled error: %s", exc)
                 try:
                     self.telegram_sender.send(f"⚠️ Bot error: {str(exc)[:100]}")
                 except Exception:
@@ -282,13 +283,17 @@ class AdaptiveTradingBot:
         result: dict[str, Any] = {"skipped": True, "signal_generated": False, "trade_executed": False}
         risk_allocation = self.pair_risk_allocation.get(symbol, 0.005)
 
+        if symbol in self._unavailable_symbols:
+            return result
+
         try:
+            resolved_symbol = self.mt5_client.resolve_symbol(symbol)
             frames: dict[str, pd.DataFrame] = {}
             for tf in ("4h", "1h", "15m"):
-                data = fetch_mt5_ohlcv(days=180, timeframe=tf, symbol=symbol)
+                data = fetch_mt5_ohlcv(days=180, timeframe=tf, symbol=resolved_symbol)
                 frame = prepare_ohlcv(data)
                 if frame.empty:
-                    raise ValueError(f"No {tf} OHLCV data for {symbol}")
+                    raise ValueError(f"No {tf} OHLCV data for {resolved_symbol}")
                 frames[tf] = frame
 
             swings: dict[str, Any] = {}
@@ -375,12 +380,17 @@ class AdaptiveTradingBot:
                 logger.info("%s: Global max positions reached (%s)", symbol, self.portfolio_manager.total_open_positions)
                 return result
 
-            self._execute_trade(symbol, signal, scored, regimes["1h"], risk_allocation)
+            self._execute_trade(resolved_symbol, signal, scored, regimes["1h"], risk_allocation)
             result["trade_executed"] = True
             result["skipped"] = False
             return result
 
         except Exception as exc:
+            message = str(exc)
+            if "not found in MT5" in message or "symbol discovery is unavailable" in message:
+                self._unavailable_symbols.add(symbol)
+                logger.warning("%s unavailable in MT5; skipping it for this bot run", symbol)
+                return result
             logger.error("%s: Error - %s", symbol, exc)
             return result
 
@@ -500,9 +510,91 @@ class AdaptiveTradingBot:
             except Exception:
                 pass
 
+    def run_test_order(self, symbol: str, direction: str, live: bool = False) -> None:
+        """Validate or place one manually requested market order for testing."""
+        symbol = symbol.strip().upper()
+        direction = direction.strip().lower()
+        if not symbol:
+            raise ValueError("A symbol is required")
+        if direction not in {"buy", "sell"}:
+            raise ValueError("Direction must be 'buy' or 'sell'")
+
+        if live and not settings.use_mt5_execution:
+            raise RuntimeError("Live test orders require USE_MT5_EXECUTION=true")
+        if live and not self.mt5_client.is_configured():
+            raise RuntimeError("Live test orders require MT5_ACCOUNT, MT5_PASSWORD, and MT5_SERVER")
+
+        self.mt5_client.connect()
+        prices = self.mt5_client.get_price(symbol)
+        entry = prices["ask"] if direction == "buy" else prices["bid"]
+        atr = self.mt5_client.get_atr(symbol)
+        if entry <= 0 or atr <= 0:
+            raise RuntimeError(f"Invalid live market data for {symbol}: entry={entry}, atr={atr}")
+
+        stop_distance = atr * 1.5
+        target_distance = atr * 3.0
+        stop_loss = entry - stop_distance if direction == "buy" else entry + stop_distance
+        take_profit = entry + target_distance if direction == "buy" else entry - target_distance
+        risk_allocation = self.pair_risk_allocation.get(symbol, settings.risk_per_trade)
+        risk_amount = float(settings.account_balance) * risk_allocation
+        lots = risk_amount / (stop_distance * 100000)
+        lots = round(max(0.01, min(lots, 1.0)), 2)
+
+        order_plan: dict[str, Any] = {
+            "symbol": symbol,
+            "direction": direction,
+            "entry": entry,
+            "stop_loss": stop_loss,
+            "take_profit": take_profit,
+            "lots": lots,
+            "live": live,
+        }
+        logger.info("Test order plan: %s", order_plan)
+
+        if not live:
+            logger.info("Dry-run only: no order was submitted")
+            return
+
+        result = self.mt5_client.place_order(
+            symbol=symbol,
+            order_type=direction,
+            lots=lots,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
+            reference_entry_price=entry,
+            comment="manual-test-order",
+        )
+        if result.get("status") != "accepted":
+            raise RuntimeError(f"Test order was not accepted: {result}")
+        logger.info("Test order accepted: %s", result)
+
 
 def main() -> None:
     """Entry point for the adaptive trading bot."""
+    parser = argparse.ArgumentParser(description="Run the adaptive Forex trading bot.")
+    parser.add_argument(
+        "--test-order",
+        metavar="SYMBOL",
+        help="Validate and optionally place one test market order for an MT5 symbol.",
+    )
+    parser.add_argument(
+        "--direction",
+        choices=("buy", "sell"),
+        default="buy",
+        help="Direction for --test-order (default: buy).",
+    )
+    parser.add_argument(
+        "--live",
+        action="store_true",
+        help="Actually submit the test order; without this flag the command is dry-run only.",
+    )
+    args = parser.parse_args()
+
+    if args.test_order:
+        bot = AdaptiveTradingBot()
+        bot.run_test_order(args.test_order, args.direction, live=args.live)
+        return
+
     bot = AdaptiveTradingBot()
     bot.run()
 

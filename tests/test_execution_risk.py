@@ -185,3 +185,24 @@ def test_mt5_client_adjusts_tight_sl_tp_distance(monkeypatch) -> None:
     assert len(captured) == 1
     assert captured[0]["sl"] == 1.0990
     assert captured[0]["tp"] == 1.1010
+
+
+def test_mt5_client_resolves_broker_symbol_suffix(monkeypatch) -> None:
+    class FakeMT5:
+        def initialize(self, **kwargs) -> bool:
+            return True
+
+        def symbol_info(self, symbol: str) -> None:
+            return None
+
+        def symbols_get(self) -> list[SimpleNamespace]:
+            return [SimpleNamespace(name="EURUSDm")]
+
+        def symbol_select(self, symbol: str, select: bool) -> bool:
+            return symbol == "EURUSDm" and select
+
+    monkeypatch.setattr("execution.mt5_client.mt5", FakeMT5())
+
+    client = MT5Client(account=123456, password="secret", server="Demo")
+
+    assert client.resolve_symbol("EURUSD") == "EURUSDm"

@@ -912,3 +912,35 @@ AttributeError: 'NoneType' object has no attribute 'is_weekend'
    Checks: 2/2 passed
    Successes: 2
 2026-08-19 08:10:33,714 | INFO | bot | Bot stopped by user
+2026-08-20 09:05:19,897 | INFO | bot | Bot starting...
+2026-08-20 09:05:57,180 | INFO | bot | Reconciled 0 bot-owned open position(s)
+2026-08-20 09:06:00,402 | INFO | bot | Restoring daily PnL for 2026-08-20: $0.00
+2026-08-20 09:06:00,404 | INFO | bot | Reconciled 0 bot-owned open position(s)
+2026-08-20 09:06:21,513 | INFO | bot | EURUSD: 4H=trending | 1H=trending | 15M=trending
+2026-08-20 09:06:21,601 | INFO | bot | EURUSD: Signal scored 62 (WEAK)
+2026-08-20 09:06:21,601 | INFO | bot | EURUSD: Score 62 < 65 threshold, skipping
+2026-08-20 09:07:03,959 | INFO | bot | GBPUSD: 4H=trending | 1H=ranging | 15M=mixed
+2026-08-20 09:07:03,959 | INFO | bot | GBPUSD: Mixed regime detected, skipping
+2026-08-20 09:07:35,663 | INFO | bot | USDJPY: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-20 09:07:35,664 | INFO | bot | USDJPY: Mixed regime detected, skipping
+2026-08-20 09:07:51,899 | INFO | bot | AUDUSD: 4H=trending | 1H=mixed | 15M=mixed
+2026-08-20 09:07:51,899 | INFO | bot | AUDUSD: Mixed regime detected, skipping
+2026-08-20 09:08:02,115 | INFO | bot | NZDUSD: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-20 09:08:02,115 | INFO | bot | NZDUSD: Mixed regime detected, skipping
+2026-08-20 09:08:11,597 | INFO | bot | USDCAD: 4H=trending | 1H=trending | 15M=mixed
+2026-08-20 09:08:11,598 | INFO | bot | USDCAD: Mixed regime detected, skipping
+2026-08-20 09:08:22,860 | INFO | bot | USDCHF: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-20 09:08:22,860 | INFO | bot | USDCHF: Mixed regime detected, skipping
+2026-08-20 09:08:31,060 | INFO | bot | EURGBP: 4H=mixed | 1H=trending | 15M=mixed
+2026-08-20 09:08:31,060 | INFO | bot | EURGBP: Mixed regime detected, skipping
+2026-08-20 09:08:39,629 | INFO | bot | EURAUD: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-20 09:08:39,629 | INFO | bot | EURAUD: Mixed regime detected, skipping
+2026-08-20 09:08:49,458 | INFO | bot | GBPJPY: 4H=mixed | 1H=ranging | 15M=trending
+2026-08-20 09:08:49,459 | INFO | bot | GBPJPY: Mixed regime detected, skipping
+2026-08-20 09:08:51,709 | INFO | bot | CYCLE REPORT: micro
+   Time: 2026-08-20 07:06:00.398435+00:00
+   Pairs: 10 processed, 10 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 2/2 passed
+   Successes: 2

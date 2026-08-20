@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import Any
+
+from pytest import MonkeyPatch
 
 from execution.mt5_client import MT5Client
 
 
-def test_mt5_client_rejects_order_without_position(monkeypatch) -> None:
+def test_mt5_client_returns_unreconciled_order_without_position(monkeypatch: MonkeyPatch) -> None:
     class FakeMT5:
         ORDER_TYPE_BUY = 0
         ORDER_TYPE_SELL = 1
@@ -14,7 +17,7 @@ def test_mt5_client_rejects_order_without_position(monkeypatch) -> None:
         ORDER_FILLING_IOC = 0
         TRADE_RETCODE_DONE = 10009
 
-        def initialize(self, **kwargs) -> bool:
+        def initialize(self, **kwargs: Any) -> bool:
             return True
 
         def last_error(self) -> str:
@@ -32,17 +35,17 @@ def test_mt5_client_rejects_order_without_position(monkeypatch) -> None:
         def symbol_info_tick(self, symbol: str) -> SimpleNamespace:
             return SimpleNamespace(ask=1.1000, bid=1.0990)
 
-        def order_send(self, request: dict) -> SimpleNamespace:
+        def order_send(self, request: dict[str, Any]) -> SimpleNamespace:
             return SimpleNamespace(retcode=self.TRADE_RETCODE_DONE, comment="ok", ticket=789)
 
-        def positions_get(self, ticket=None):
+        def positions_get(self, ticket: int | None = None) -> list[SimpleNamespace]:
             return []
 
     monkeypatch.setattr("execution.mt5_client.mt5", FakeMT5())
     client = MT5Client(account=123456, password="secret", server="Demo")
 
-    try:
-        client.place_order("EURUSD", "buy", 0.01, stop_loss=1.0950, take_profit=1.1050)
-        assert False, "Expected RuntimeError when position verification fails"
-    except RuntimeError as exc:
-        assert "position not found" in str(exc)
+    result = client.place_order("EURUSD", "buy", 0.01, stop_loss=1.0950, take_profit=1.1050)
+
+    assert result["status"] == "accepted_unreconciled"
+    assert result["ticket"] == 789
+    assert result["position"] is None

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+import re
+from datetime import datetime, timezone
 from typing import Any, cast
 
 mt5: Any = None
@@ -88,6 +90,45 @@ class MT5Client:
         if account_info is None:
             raise RuntimeError("MT5 account_info returned no data")
         return float(account_info.equity)
+
+    def get_symbol_spec(self, symbol: str) -> dict[str, float | str]:
+        """Return broker symbol economics required for risk sizing."""
+        self.connect()
+        mt5_module = self._require_mt5()
+        resolved_symbol = self.resolve_symbol(symbol)
+        info = mt5_module.symbol_info(resolved_symbol)
+        if info is None:
+            raise RuntimeError(f"Symbol {resolved_symbol} not found in MT5")
+        return {
+            "symbol": resolved_symbol,
+            "point": float(getattr(info, "point", 0.0) or 0.0),
+            "tick_size": float(getattr(info, "trade_tick_size", 0.0) or getattr(info, "point", 0.0) or 0.0),
+            "tick_value": float(getattr(info, "trade_tick_value", 0.0) or 0.0),
+            "volume_min": float(getattr(info, "volume_min", 0.0) or 0.0),
+            "volume_max": float(getattr(info, "volume_max", 0.0) or 0.0),
+            "volume_step": float(getattr(info, "volume_step", 0.0) or 0.0),
+        }
+
+    def calculate_risk_lots(self, symbol: str, risk_amount: float, stop_distance: float) -> float:
+        """Calculate volume from live broker tick economics and stop distance."""
+        if risk_amount <= 0 or stop_distance <= 0:
+            raise ValueError("risk_amount and stop_distance must be positive")
+        spec = self.get_symbol_spec(symbol)
+        tick_size = float(spec["tick_size"])
+        tick_value = float(spec["tick_value"])
+        if tick_size <= 0 or tick_value <= 0:
+            raise RuntimeError(f"Broker returned invalid tick economics for {spec['symbol']}")
+        raw_lots = risk_amount / ((stop_distance / tick_size) * tick_value)
+        volume_min = float(spec["volume_min"])
+        volume_max = float(spec["volume_max"])
+        volume_step = float(spec["volume_step"])
+        if volume_min <= 0 or volume_step <= 0:
+            raise RuntimeError(f"Broker returned invalid volume settings for {spec['symbol']}")
+        if raw_lots < volume_min:
+            raise RuntimeError(f"Minimum volume {volume_min} exceeds risk budget for {spec['symbol']}")
+        lots = min(raw_lots, volume_max) if volume_max > 0 else raw_lots
+        lots = (lots // volume_step) * volume_step
+        return round(max(volume_min, lots), 8)
 
     def resolve_symbol(self, symbol: str) -> str:
         """Resolve a configured pair to the broker's exact MT5 symbol name."""
@@ -240,22 +281,36 @@ class MT5Client:
             message = f"{message}: {comment}"
         return message
 
-    def _verify_position(self, ticket: int, symbol: str, entry_price: float | None = None, point: float = 0.0) -> dict[str, Any] | None:
+    def _position_dict(self, position: Any) -> dict[str, Any]:
+        """Convert an MT5 position record into the bot's canonical shape."""
+        position_type = getattr(position, "type", self._require_mt5().ORDER_TYPE_BUY)
+        return {
+            "ticket": int(position.ticket),
+            "symbol": str(position.symbol),
+            "type": "buy" if position_type == self._require_mt5().ORDER_TYPE_BUY else "sell",
+            "volume": float(position.volume),
+            "entry_price": float(position.price_open),
+            "current_price": float(position.price_current),
+            "sl": float(position.sl),
+            "tp": float(position.tp),
+            "profit": float(position.profit),
+            "magic": int(getattr(position, "magic", 0) or 0),
+        }
+
+    def _verify_position(
+        self,
+        ticket: int,
+        symbol: str,
+        entry_price: float | None = None,
+        point: float = 0.0,
+        position_id: int | None = None,
+    ) -> dict[str, Any] | None:
         mt5_module = self._require_mt5()
 
-        positions = mt5_module.positions_get(ticket=ticket)
+        lookup_ticket = position_id or ticket
+        positions = mt5_module.positions_get(ticket=lookup_ticket)
         if positions:
-            position = positions[0]
-            return {
-                "ticket": position.ticket,
-                "symbol": position.symbol,
-                "volume": float(position.volume),
-                "entry_price": float(position.price_open),
-                "current_price": float(position.price_current),
-                "sl": float(position.sl),
-                "tp": float(position.tp),
-                "profit": float(position.profit),
-            }
+            return self._position_dict(positions[0])
 
         positions = mt5_module.positions_get()
         if positions:
@@ -263,27 +318,9 @@ class MT5Client:
                 if position.symbol != symbol:
                     continue
                 if entry_price is None:
-                    return {
-                        "ticket": position.ticket,
-                        "symbol": position.symbol,
-                        "volume": float(position.volume),
-                        "entry_price": float(position.price_open),
-                        "current_price": float(position.price_current),
-                        "sl": float(position.sl),
-                        "tp": float(position.tp),
-                        "profit": float(position.profit),
-                    }
+                    return self._position_dict(position)
                 if abs(float(position.price_open) - entry_price) <= max(3.0 * point, 1e-5):
-                    return {
-                        "ticket": position.ticket,
-                        "symbol": position.symbol,
-                        "volume": float(position.volume),
-                        "entry_price": float(position.price_open),
-                        "current_price": float(position.price_current),
-                        "sl": float(position.sl),
-                        "tp": float(position.tp),
-                        "profit": float(position.profit),
-                    }
+                    return self._position_dict(position)
 
         return None
 
@@ -419,16 +456,30 @@ class MT5Client:
         if ticket is None:
             raise RuntimeError("MT5 order accepted but no ticket/deal/order ID found")
 
+        position_id = getattr(result, "position", None) or getattr(result, "position_id", None)
+
         # After order_send returns, the terminal may need a short moment to register the position.
         # Poll `positions_get` and `history_deals_get` for a few seconds to locate the resulting position/deal.
         import time
 
-        position = self._verify_position(int(ticket), symbol, entry_price=entry_price, point=point)
+        position = self._verify_position(
+            int(ticket),
+            symbol,
+            entry_price=entry_price,
+            point=point,
+            position_id=int(position_id) if position_id else None,
+        )
         if position is None:
             # try polling briefly (total ~5s)
             for _ in range(10):
                 time.sleep(0.5)
-                position = self._verify_position(int(ticket), symbol, entry_price=entry_price, point=point)
+                position = self._verify_position(
+                    int(ticket),
+                    symbol,
+                    entry_price=entry_price,
+                    point=point,
+                    position_id=int(position_id) if position_id else None,
+                )
                 if position is not None:
                     break
 
@@ -438,20 +489,29 @@ class MT5Client:
             try:
                 deals: list[Any] = mt5_module.history_deals_get(0, now_ts, 20) or []
                 for d in deals:
-                    if getattr(d, "order", None) == ticket or getattr(d, "deal", None) == ticket:
-                        position = self._verify_position(int(ticket), symbol, entry_price=entry_price, point=point)
+                    if (
+                        getattr(d, "order", None) == ticket
+                        or getattr(d, "deal", None) == ticket
+                        or (position_id is not None and getattr(d, "position_id", None) == position_id)
+                    ):
+                        position_id = position_id or getattr(d, "position_id", None)
+                        position = self._verify_position(
+                            int(ticket),
+                            symbol,
+                            entry_price=entry_price,
+                            point=point,
+                            position_id=int(position_id) if position_id else None,
+                        )
                         break
             except Exception:
                 # ignore history errors during verification
                 pass
 
-        if position is None:
-            raise RuntimeError(f"MT5 order sent but position not found for ticket {ticket}")
-
         return {
-            "status": "accepted",
+            "status": "accepted" if position is not None else "accepted_unreconciled",
             "order_id": str(ticket),
             "ticket": ticket,
+            "position_id": position.get("ticket") if position else position_id,
             "comment": getattr(result, "comment", ""),
             "entry_price": entry_price,
             "position": position,
@@ -469,7 +529,28 @@ class MT5Client:
 
         logger.info("MT5 analysis drawing is not available in this runtime environment.")
 
-    def close_position(self, position_id: int) -> dict[str, Any]:
+    def modify_position(self, position_id: int, stop_loss: float | None = None, take_profit: float | None = None) -> dict[str, Any]:
+        """Modify SL/TP on an existing position."""
+        self.connect()
+        mt5_module = self._require_mt5()
+        positions = mt5_module.positions_get(ticket=position_id)
+        if not positions:
+            raise RuntimeError(f"MT5 position {position_id} was not found")
+        position = positions[0]
+        request: dict[str, Any] = {
+            "action": mt5_module.TRADE_ACTION_SLTP,
+            "symbol": position.symbol,
+            "position": position.ticket,
+            "sl": float(stop_loss if stop_loss is not None else position.sl),
+            "tp": float(take_profit if take_profit is not None else position.tp),
+            "magic": 123456,
+        }
+        result = mt5_module.order_send(request)
+        if result is None or result.retcode != mt5_module.TRADE_RETCODE_DONE:
+            raise RuntimeError(f"MT5 position modification failed: {self._mt5_error_message(result)}")
+        return {"status": "modified", "position_id": position_id, "sl": request["sl"], "tp": request["tp"]}
+
+    def close_position(self, position_id: int, volume: float | None = None) -> dict[str, Any]:
         self.connect()
         mt5_module = self._require_mt5()
         positions = mt5_module.positions_get(ticket=position_id)
@@ -484,7 +565,7 @@ class MT5Client:
         close_request: dict[str, Any] = {
             "action": mt5_module.TRADE_ACTION_DEAL,
             "symbol": position.symbol,
-            "volume": position.volume,
+            "volume": float(volume if volume is not None else position.volume),
             "type": mt5_module.ORDER_TYPE_SELL if position.type == mt5_module.ORDER_TYPE_BUY else mt5_module.ORDER_TYPE_BUY,
             "price": tick.ask if position.type == mt5_module.ORDER_TYPE_BUY else tick.bid,
             "deviation": 20,
@@ -500,8 +581,8 @@ class MT5Client:
             raise RuntimeError(f"MT5 position close failed with code {result.retcode}")
         return {"status": "closed", "position_id": str(position_id)}
 
-    def get_open_positions(self) -> list[dict[str, Any]]:
-        """Fetch all open positions for the account."""
+    def get_open_positions(self, bot_only: bool = False) -> list[dict[str, Any]]:
+        """Fetch open positions, optionally limited to this bot's magic number."""
         self.connect()
         mt5_module = self._require_mt5()
         positions = mt5_module.positions_get()
@@ -511,6 +592,12 @@ class MT5Client:
 
         result: list[dict[str, Any]] = []
         for pos in positions:
+            magic = int(getattr(pos, "magic", 0) or 0)
+            if bot_only and magic != 123456:
+                continue
+            comment = str(getattr(pos, "comment", "") or "")
+            score_match = re.search(r"score:(\d+(?:\.\d+)?)", comment)
+            score = float(score_match.group(1)) if score_match else 0.0
             pnl_pct = (pos.profit / (pos.price_open * pos.volume * 100000)) * 100 if pos.price_open and pos.volume else 0.0
             result.append({
                 "ticket": pos.ticket,
@@ -523,6 +610,13 @@ class MT5Client:
                 "tp": pos.tp,
                 "pnl": pos.profit,
                 "pnl_percent": pnl_pct,
+                "magic": magic,
+                "score": score,
+                "open_time": (
+                    datetime.fromtimestamp(int(pos.time), tz=timezone.utc)
+                    if getattr(pos, "time", None)
+                    else None
+                ),
             })
 
         return result

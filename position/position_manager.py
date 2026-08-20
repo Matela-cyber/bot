@@ -99,12 +99,14 @@ class PositionManager:
 
         # 1. Time-based exit (max hold time)
         if open_time is not None:
-            from datetime import datetime
+            from datetime import datetime, timezone
 
             if isinstance(open_time, str):
                 from dateutil import parser
                 open_time = parser.parse(open_time)
-            hours_held = (datetime.now() - open_time).total_seconds() / 3600
+            if open_time.tzinfo is None:
+                open_time = open_time.replace(tzinfo=timezone.utc)
+            hours_held = (datetime.now(timezone.utc) - open_time).total_seconds() / 3600
             if hours_held > self.max_hold_hours:
                 result.update({
                     "action": "close",

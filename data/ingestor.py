@@ -165,6 +165,8 @@ class DataIngestor:
                 raise RuntimeError(f"MT5 returned no OHLCV bars for {resolved_symbol}")
 
             frame = pd.DataFrame(rates)
+            if len(frame) > 1:
+                frame = frame.iloc[:-1].copy()
             frame["time"] = pd.to_datetime(frame["time"], unit="s", utc=True)
             frame = frame.set_index("time")[ ["open", "high", "low", "close", "tick_volume"] ]
             frame = frame.rename(columns={"tick_volume": "volume"})

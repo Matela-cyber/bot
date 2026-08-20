@@ -35,7 +35,10 @@ class RiskManager:
     peak_equity: float | None = None
 
     def get_open_positions(self, mt5_client: MT5Client) -> list[dict[str, Any]]:
-        positions = mt5_client.get_open_positions()
+        try:
+            positions = mt5_client.get_open_positions(bot_only=True)
+        except TypeError:
+            positions = mt5_client.get_open_positions()
         result: list[dict[str, Any]] = []
         for pos in positions:
             result.append(
@@ -62,6 +65,15 @@ class RiskManager:
             sl = pos.get("sl", 0.0)
             volume = pos.get("volume", 0.0)
             if entry and sl and volume:
+                try:
+                    spec = mt5_client.get_symbol_spec(str(pos["symbol"]))
+                    tick_size = float(spec["tick_size"])
+                    tick_value = float(spec["tick_value"])
+                    if tick_size > 0 and tick_value > 0:
+                        total_risk_amount += (abs(entry - sl) / tick_size) * tick_value * volume
+                        continue
+                except Exception:
+                    pass
                 total_risk_amount += abs(entry - sl) * volume * CONTRACT_SIZE
 
         equity = mt5_client.get_equity()
@@ -71,20 +83,26 @@ class RiskManager:
         return total_risk_amount / equity
 
     def approve_trade(self, direction: str, mt5_client: MT5Client) -> tuple[bool, str]:
+        direction = direction.lower()
         try:
             positions = self.get_open_positions(mt5_client)
         except Exception as exc:
             return False, f"open_positions_failed:{exc}"
 
-        if len(positions) >= MAX_CONCURRENT_POSITIONS:
+        if len(positions) >= settings.global_max_concurrent_positions:
             return False, "max_concurrent_positions"
 
-        same_direction_count = sum(1 for pos in positions if pos["direction"] == direction)
+        same_direction_count = sum(
+            1 for pos in positions
+            if (pos["direction"] == direction or
+                (direction == "buy" and pos["direction"] == "bull") or
+                (direction == "sell" and pos["direction"] == "bear"))
+        )
         if same_direction_count >= MAX_SAME_DIRECTION_POSITIONS:
             return False, "max_same_direction_positions"
 
         total_risk_pct = self.calculate_total_risk(mt5_client)
-        if total_risk_pct >= MAX_TOTAL_RISK_PERCENT:
+        if total_risk_pct >= settings.global_max_risk_percent:
             return False, "max_total_risk_percent"
 
         return True, "approved"
@@ -94,7 +112,7 @@ class RiskManager:
         current_equity: float | None = None,
         peak_equity: float | None = None,
     ) -> tuple[bool, str]:
-        if self.daily_loss >= DAILY_LOSS_LIMIT * self.account_balance:
+        if self.daily_loss >= settings.global_daily_loss_limit * self.account_balance:
             return False, "daily_loss_limit"
 
         effective_current_equity = (
@@ -114,7 +132,7 @@ class RiskManager:
             return True, "ok"
 
         drawdown = (effective_peak_equity - effective_current_equity) / effective_peak_equity
-        if drawdown >= OVERALL_DRAWDOWN_LIMIT:
+        if drawdown >= settings.global_drawdown_limit:
             return False, "overall_drawdown_limit"
 
         return True, "ok"

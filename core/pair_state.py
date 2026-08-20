@@ -19,6 +19,7 @@ class PairState:
     daily_pnl: float = 0.0
     open_positions: list[dict[str, Any]] = field(default_factory=_default_open_positions)
     last_trade_time: str | None = None
+    current_best_score: float = 0.0
     total_trades: int = 0
     winning_trades: int = 0
     losing_trades: int = 0
@@ -40,10 +41,19 @@ class PairState:
     def add_position(self, position: dict[str, Any]) -> None:
         """Add an open position to the state."""
         self.open_positions.append(position)
+        self.update_best_score()
 
     def remove_position(self, position_id: int) -> None:
         """Remove a closed position from the state."""
         self.open_positions = [p for p in self.open_positions if p.get("ticket") != position_id]
+        self.update_best_score()
+
+    def update_best_score(self) -> None:
+        """Update the highest quality score among open positions."""
+        self.current_best_score = max(
+            (float(position.get("score", 0.0) or 0.0) for position in self.open_positions),
+            default=0.0,
+        )
 
     def update_daily_pnl(self, pnl: float) -> None:
         """Update daily PnL for this pair."""

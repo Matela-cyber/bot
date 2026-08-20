@@ -22,6 +22,7 @@ from filter.news_filter import NewsFilter
 from filter.trading_filter import TradingFilter
 from filter.weekend_filter import WeekendFilter
 from notifications.telegram_sender import TelegramSender
+from position.position_manager import PositionManager
 from regime.market_regime import MarketRegime
 from risk.manager import RiskManager
 from signals.signal_engine import SignalEngine
@@ -57,6 +58,7 @@ class AdaptiveTradingBot:
         self.candlestick_validator = CandlestickValidator()
         self.repository = Repository(settings.database_url)
         self.portfolio_manager = PortfolioManager({"TRADING_PAIRS": settings.trading_pairs})
+        self.position_manager = PositionManager()
 
         self.trading_pairs = settings.trading_pairs
         self.pair_timeframes = settings.pair_timeframes
@@ -71,6 +73,8 @@ class AdaptiveTradingBot:
         self.error_count = 0
         self.max_errors = 10
         self.last_health_check: datetime | None = None
+        self._last_reconciled_positions: set[int] = set()
+        self._partial_exit_tickets: set[int] = set()
 
         self.cycle_types = {
             "standard": 900,
@@ -93,6 +97,12 @@ class AdaptiveTradingBot:
             return
 
         try:
+            self._sync_positions()
+        except Exception as exc:
+            logger.critical("Initial position reconciliation failed: %s", exc)
+            return
+
+        try:
             self.telegram_sender.send("🚀 Bot started successfully (self-aware mode)")
         except Exception:
             logger.warning("Telegram startup alert failed")
@@ -112,7 +122,7 @@ class AdaptiveTradingBot:
                             self.telegram_sender.send("🚨 CRITICAL: Max errors reached, bot shutting down")
                         except Exception:
                             pass
-                        raise RuntimeError("Max errors reached")
+                        return
                 else:
                     self.error_count = 0
 
@@ -226,6 +236,55 @@ class AdaptiveTradingBot:
         self.last_health_check = datetime.now(pytz.UTC)
         return report
 
+    def _sync_positions(self) -> None:
+        """Reconcile bot-owned MT5 positions into in-memory portfolio state."""
+        if not settings.use_mt5_execution:
+            return
+        positions = self.mt5_client.get_open_positions(bot_only=True)
+        for position in positions:
+            entry = float(position.get("entry_price", 0.0) or 0.0)
+            stop_loss = float(position.get("sl", 0.0) or 0.0)
+            current_price = float(position.get("current_price", 0.0) or 0.0)
+            initial_risk = abs(entry - stop_loss)
+            if initial_risk > 0:
+                remaining_to_stop = (
+                    current_price - stop_loss
+                    if position.get("type") == "buy"
+                    else stop_loss - current_price
+                )
+                position["danger"] = remaining_to_stop <= initial_risk * 0.25
+            else:
+                position["danger"] = True
+        equity = self.mt5_client.get_equity()
+        peak_equity = self.portfolio_manager.get_peak_equity(equity)
+        self.portfolio_manager.update_drawdown(equity, peak_equity)
+        current_tickets = {int(pos["ticket"]) for pos in positions}
+        closed_tickets = self._last_reconciled_positions - current_tickets
+        for ticket in closed_tickets:
+            try:
+                previous = self.open_positions.get(ticket)
+                self.repository.update_trade_exit(
+                    str(ticket),
+                    float(previous.get("current_price", previous.get("entry_price", 0.0))) if previous else 0.0,
+                    float(previous.get("pnl", 0.0)) if previous else 0.0,
+                    None,
+                    None,
+                    0,
+                    0,
+                    0,
+                    "broker_closed",
+                )
+            except Exception as exc:
+                logger.warning("Could not persist closed position %s: %s", ticket, exc)
+        self.open_positions = {int(pos["ticket"]): pos for pos in positions}
+        self.portfolio_manager.total_open_positions = len(positions)
+        for symbol in self.trading_pairs:
+            pair_state = self.portfolio_manager.get_pair_state(symbol)
+            pair_state.open_positions = [pos for pos in positions if pos["symbol"] == symbol]
+            pair_state.update_best_score()
+        self._last_reconciled_positions = set(self.open_positions)
+        logger.info("Reconciled %s bot-owned open position(s)", len(positions))
+
     def run_cycle(self, cycle_type: str) -> CycleReport:
         """Execute a full trading cycle and return a diagnostic report."""
         report = CycleReport(datetime.now(pytz.UTC), cycle_type)
@@ -233,6 +292,11 @@ class AdaptiveTradingBot:
 
         current_time = datetime.now(pytz.UTC)
         self._reset_daily_stats(current_time)
+        self._sync_positions()
+
+        if cycle_type in {"monitoring", "emergency"}:
+            self._monitor_positions(report)
+            return report
 
         filter_result = self.trading_filter.should_trade(current_time)
         if not filter_result["trade"]:
@@ -256,11 +320,11 @@ class AdaptiveTradingBot:
 
         for symbol in self.trading_pairs:
             try:
-                result = self._process_pair(symbol, current_time)
+                result = self._process_pair(symbol, current_time, float(filter_result.get("risk_multiplier", 1.0)))
+                if result.get("processed"):
+                    pairs_processed += 1
                 if result.get("skipped"):
                     pairs_skipped += 1
-                else:
-                    pairs_processed += 1
                 if result.get("signal_generated"):
                     signals_generated += 1
                 if result.get("trade_executed"):
@@ -273,21 +337,35 @@ class AdaptiveTradingBot:
         report.signals_generated = signals_generated
         report.trades_executed = trades_executed
 
-        if cycle_type in {"monitoring", "emergency"}:
-            self._monitor_positions(report)
+        if settings.use_mt5_execution:
+            try:
+                equity = self.mt5_client.get_equity()
+                peak_equity = self.portfolio_manager.get_peak_equity(equity)
+                self.repository.upsert_daily_stat({
+                    "date": current_time.date(),
+                    "start_balance": float(settings.account_balance),
+                    "end_balance": equity,
+                    "daily_pnl": self.portfolio_manager.global_daily_pnl,
+                    "daily_loss": self.risk_manager.daily_loss,
+                    "drawdown_peak": peak_equity,
+                    "drawdown_percent": self.portfolio_manager.global_drawdown,
+                    "halt_triggered": not limits_ok,
+                })
+            except Exception as exc:
+                report.add_warning(f"Daily state persistence failed: {exc}")
 
         return report
 
-    def _process_pair(self, symbol: str, current_time: datetime) -> dict[str, Any]:
+    def _process_pair(self, symbol: str, current_time: datetime, risk_multiplier: float = 1.0) -> dict[str, Any]:
         """Process one symbol across multiple timeframes, validate candlesticks, and score the trade."""
-        result: dict[str, Any] = {"skipped": True, "signal_generated": False, "trade_executed": False}
-        risk_allocation = self.pair_risk_allocation.get(symbol, 0.005)
+        result: dict[str, Any] = {"processed": False, "skipped": True, "signal_generated": False, "trade_executed": False}
 
         if symbol in self._unavailable_symbols:
             return result
 
         try:
             resolved_symbol = self.mt5_client.resolve_symbol(symbol)
+            result["processed"] = True
             frames: dict[str, pd.DataFrame] = {}
             for tf in ("4h", "1h", "15m"):
                 data = fetch_mt5_ohlcv(days=180, timeframe=tf, symbol=resolved_symbol)
@@ -314,6 +392,10 @@ class AdaptiveTradingBot:
                 regimes["1h"]["regime"],
                 regimes["15m"]["regime"],
             )
+
+            if any(regimes[tf]["regime"] == "mixed" for tf in ("4h", "1h", "15m")):
+                logger.info("%s: Mixed regime detected, skipping", symbol)
+                return result
 
             signal = self._select_strategy_and_signal(frames["15m"], regimes["15m"])
             if signal["signal"] == "none":
@@ -353,7 +435,6 @@ class AdaptiveTradingBot:
                 logger.info("%s: Score %s < %s threshold, skipping", symbol, scored["score"], settings.min_score)
                 return result
 
-            result["signal_generated"] = True
             entry = signal.get("entry", 0.0)
             sl = signal.get("stop_loss", 0.0)
             tp = signal.get("take_profit", 0.0)
@@ -376,13 +457,32 @@ class AdaptiveTradingBot:
                 logger.info("%s: Paused due to 3 consecutive losses", symbol)
                 return result
 
-            if self.portfolio_manager.total_open_positions >= settings.global_max_concurrent_positions:
-                logger.info("%s: Global max positions reached (%s)", symbol, self.portfolio_manager.total_open_positions)
+            approved, approval_reason = self.portfolio_manager.can_open_position(
+                symbol=symbol,
+                direction=signal["signal"],
+                score_or_risk=float(scored["score"]),
+            )
+            if not approved:
+                logger.info("%s: Position rejected: %s", symbol, approval_reason)
                 return result
 
-            self._execute_trade(resolved_symbol, signal, scored, regimes["1h"], risk_allocation)
-            result["trade_executed"] = True
-            result["skipped"] = False
+            result["signal_generated"] = True
+            quality_risk = self.portfolio_manager.get_dynamic_risk(float(scored["score"]))
+            if quality_risk <= 0:
+                logger.info("%s: No risk allocation for score %s", symbol, scored["score"])
+                return result
+
+            execution = self._execute_trade(
+                resolved_symbol,
+                signal,
+                scored,
+                regimes["1h"],
+                quality_risk * max(0.0, min(1.0, risk_multiplier)),
+            )
+            result["trade_executed"] = execution.get("status") in {"accepted", "accepted_unreconciled"}
+            result["skipped"] = not result["trade_executed"]
+            if result["trade_executed"]:
+                self.portfolio_manager.record_override_position()
             return result
 
         except Exception as exc:
@@ -397,12 +497,35 @@ class AdaptiveTradingBot:
     def _monitor_positions(self, report: CycleReport) -> None:
         """Monitor live open positions and update diagnostic report."""
         try:
-            positions = self.mt5_client.get_open_positions()
+            positions = self.mt5_client.get_open_positions(bot_only=True)
             self.open_positions = {pos["ticket"]: pos for pos in positions}
             if positions:
                 report.add_check("Position Monitoring", True, f"Monitoring {len(positions)} positions")
                 for pos in positions:
                     report.add_success(f"Position {pos['ticket']}: PnL=${pos.get('pnl', 0.0):.2f}")
+                    management = self.position_manager.manage({
+                        "ticket": pos["ticket"],
+                        "direction": pos["type"],
+                        "entry_price": pos["entry_price"],
+                        "stop_loss": pos["sl"],
+                        "take_profit": pos["tp"],
+                        "current_price": pos["current_price"],
+                        "volume": pos["volume"],
+                        "pnl": pos["pnl"],
+                        "open_time": pos.get("open_time"),
+                    })
+                    action = management.get("action")
+                    if action in {"breakeven", "trail"}:
+                        self.mt5_client.modify_position(pos["ticket"], stop_loss=float(management["new_sl"]))
+                        report.add_success(f"Position {pos['ticket']}: {action} applied")
+                    elif action == "partial_exit" and pos["ticket"] not in self._partial_exit_tickets:
+                        volume = float(pos["volume"]) * float(management["close_percent"])
+                        self.mt5_client.close_position(pos["ticket"], volume=volume)
+                        self._partial_exit_tickets.add(pos["ticket"])
+                        report.add_success(f"Position {pos['ticket']}: partial exit applied")
+                    elif action == "close":
+                        self.mt5_client.close_position(pos["ticket"])
+                        report.add_success(f"Position {pos['ticket']}: closed by manager")
             else:
                 report.add_check("Position Monitoring", True, "No open positions")
         except Exception as exc:
@@ -412,9 +535,10 @@ class AdaptiveTradingBot:
     def _reset_daily_stats(self, current_time: datetime) -> None:
         """Reset daily totals at midnight UTC."""
         if self._last_reset_date != current_time.date():
-            if self._last_reset_date is not None:
-                logger.info("Daily reset: clearing daily PnL (was $%.2f)", self.portfolio_manager.global_daily_pnl)
-                self.portfolio_manager.global_daily_pnl = 0.0
+            restored_pnl = self.repository.get_daily_pnl(current_time.date())
+            logger.info("Restoring daily PnL for %s: $%.2f", current_time.date(), restored_pnl)
+            self.portfolio_manager.global_daily_pnl = restored_pnl
+            self.risk_manager.daily_loss = self.repository.get_daily_loss(current_time.date())
             self._last_reset_date = current_time.date()
 
     def _select_strategy_and_signal(self, frame: Any, regime: dict[str, Any]) -> dict[str, Any]:
@@ -434,7 +558,7 @@ class AdaptiveTradingBot:
         scored: dict[str, Any],
         regime: dict[str, Any],
         risk_allocation: float,
-    ) -> None:
+    ) -> dict[str, Any]:
         """Execute the trade only after validation, risk gating, and MT5 checks pass."""
         try:
             if signal["signal"] not in ("buy", "sell"):
@@ -442,7 +566,7 @@ class AdaptiveTradingBot:
 
             if not settings.use_mt5_execution or not self.mt5_client.is_configured():
                 logger.warning("%s: MT5 execution disabled or not configured", symbol)
-                return
+                return {"status": "disabled", "symbol": symbol}
 
             entry_price = float(signal.get("entry", 0.0))
             stop_loss = float(signal.get("stop_loss", 0.0))
@@ -450,10 +574,20 @@ class AdaptiveTradingBot:
             if risk_per_unit <= 0:
                 raise ValueError(f"Invalid risk distance: entry={entry_price}, SL={stop_loss}")
 
-            account_balance = float(settings.account_balance)
-            risk_amount = account_balance * risk_allocation
-            lots = risk_amount / (risk_per_unit * 100000)
-            lots = round(max(0.01, min(lots, 1.0)), 2)
+            equity = self.mt5_client.get_equity()
+            self.risk_manager.account_balance = equity
+            self.risk_manager.daily_loss = self.repository.get_daily_loss(datetime.now(pytz.UTC).date())
+            limits_ok, limits_reason = self.risk_manager.check_limits(current_equity=equity)
+            if not limits_ok:
+                logger.warning("%s: Risk limits blocked trade: %s", symbol, limits_reason)
+                return {"status": "risk_blocked", "reason": limits_reason, "symbol": symbol}
+            approved, approval_reason = self.risk_manager.approve_trade(signal["signal"], self.mt5_client)
+            if not approved:
+                logger.warning("%s: Risk manager blocked trade: %s", symbol, approval_reason)
+                return {"status": "risk_blocked", "reason": approval_reason, "symbol": symbol}
+
+            risk_amount = equity * risk_allocation
+            lots = self.mt5_client.calculate_risk_lots(symbol, risk_amount, risk_per_unit)
 
             order_result = self.mt5_client.place_order(
                 symbol=symbol,
@@ -461,10 +595,11 @@ class AdaptiveTradingBot:
                 lots=lots,
                 stop_loss=stop_loss,
                 take_profit=float(signal.get("take_profit", 0.0)),
+                reference_entry_price=entry_price,
                 comment=f"score:{scored['score']}|regime:{regime['regime']}",
             )
 
-            if order_result.get("status") != "accepted":
+            if order_result.get("status") not in {"accepted", "accepted_unreconciled"}:
                 logger.error("%s: Order rejected: %s", symbol, order_result)
                 self.repository.add_failed_order({
                     "symbol": symbol,
@@ -476,17 +611,42 @@ class AdaptiveTradingBot:
                 self.telegram_sender.send(
                     f"⚠️ Order failed on {symbol}: {order_result.get('error_message', 'Unknown error')}"
                 )
-                return
+                return {"status": "rejected", "symbol": symbol, "reason": str(order_result)}
 
             logger.info("%s: Order placed: ticket=%s status=%s", symbol, order_result.get("ticket"), order_result.get("status"))
-            self.portfolio_manager.update_position_state(symbol, {
-                "ticket": order_result.get("ticket"),
+            position: dict[str, Any] = order_result.get("position") or {
+                "ticket": order_result.get("position_id") or order_result.get("ticket"),
+                "symbol": symbol,
+                "type": signal["signal"],
+                "volume": lots,
+                "entry_price": entry_price,
+                "current_price": entry_price,
+                "sl": stop_loss,
+                "tp": signal.get("take_profit"),
+                "pnl": 0.0,
+            }
+            self.open_positions[int(position["ticket"])] = position
+            position_state: dict[str, Any] = {
+                "ticket": position["ticket"],
                 "symbol": symbol,
                 "direction": signal["signal"],
+                "type": signal["signal"],
+                "score": float(scored["score"]),
                 "entry_price": entry_price,
                 "stop_loss": stop_loss,
                 "take_profit": signal.get("take_profit"),
                 "volume": lots,
+            }
+            self.portfolio_manager.add_position_state(symbol, position_state, float(scored["score"]))
+            self.repository.add_trade({
+                "trade_id": str(position["ticket"]),
+                "symbol": symbol,
+                "entry_time": datetime.now(pytz.UTC),
+                "direction": signal["signal"],
+                "entry_price": float(position.get("entry_price", entry_price)),
+                "stop_loss": float(position.get("sl", stop_loss)),
+                "take_profit": float(position.get("tp", signal.get("take_profit", 0.0))),
+                "position_size": lots,
             })
 
             msg = (
@@ -503,12 +663,15 @@ class AdaptiveTradingBot:
             except Exception:
                 logger.warning("Telegram trade alert failed for %s", symbol)
 
+            return order_result
+
         except Exception as exc:
             logger.exception("%s: Trade execution failed: %s", symbol, exc)
             try:
                 self.telegram_sender.send(f"❌ Trade failed on {symbol}: {str(exc)[:100]}")
             except Exception:
                 pass
+            return {"status": "failed", "symbol": symbol, "reason": str(exc)}
 
     def run_test_order(self, symbol: str, direction: str, live: bool = False) -> None:
         """Validate or place one manually requested market order for testing."""

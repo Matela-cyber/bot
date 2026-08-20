@@ -2,13 +2,13 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 
 logger = logging.getLogger("diagnostic")
 
 
-@dataclass
+@dataclass(init=False)
 class CycleReport:
     """Report of a single cycle execution."""
 
@@ -18,11 +18,24 @@ class CycleReport:
     pairs_skipped: int = 0
     signals_generated: int = 0
     trades_executed: int = 0
-    errors: list[str] = field(default_factory=list)
-    warnings: list[str] = field(default_factory=list)
-    successes: list[str] = field(default_factory=list)
-    checks_passed: dict[str, bool] = field(default_factory=dict)
-    checks_details: dict[str, str] = field(default_factory=dict)
+    errors: list[str]
+    warnings: list[str]
+    successes: list[str]
+    checks_passed: dict[str, bool]
+    checks_details: dict[str, str]
+
+    def __init__(self, timestamp: datetime, cycle_type: str) -> None:
+        self.timestamp = timestamp
+        self.cycle_type = cycle_type
+        self.pairs_processed = 0
+        self.pairs_skipped = 0
+        self.signals_generated = 0
+        self.trades_executed = 0
+        self.errors = []
+        self.warnings = []
+        self.successes = []
+        self.checks_passed = {}
+        self.checks_details = {}
 
     def add_success(self, msg: str) -> None:
         self.successes.append(msg)

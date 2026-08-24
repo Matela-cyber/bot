@@ -10,6 +10,10 @@ from indicators.atr import calculate_atr
 class SignalEngine:
     """Score trading signals on a 0-100 scale with multi-timeframe confluence."""
 
+    def __init__(self, frame: Any = None) -> None:
+        """Initialize the engine with an optional single-timeframe frame."""
+        self.frame = frame
+
     def score(self, signal: dict[str, Any], regime: dict[str, Any], structure: dict[str, Any]) -> dict[str, Any]:
         """Calculate signal score using the classic single-timeframe method."""
         score = 0
@@ -167,12 +171,12 @@ class SignalEngine:
     @staticmethod
     def _grade(score: int) -> str:
         """Assign quality grade based on score."""
-        if score >= 85:
+        if score >= 90:
             return "A+"
-        if score >= 75:
+        if score >= 80:
             return "STRONG"
-        if score >= 65:
+        if score >= 70:
             return "ACCEPTABLE"
-        if score >= 50:
+        if score >= 55:
             return "WEAK"
         return "NO TRADE"

@@ -38,10 +38,12 @@ class SignalEngine:
     @staticmethod
     def _grade(score: int) -> str:
         """Assign quality grade based on score."""
-        if score >= 85:
+        if score >= 90:
             return "A+"
-        if score >= 75:
+        if score >= 80:
             return "STRONG"
-        if score >= 65:
+        if score >= 70:
             return "ACCEPTABLE"
+        if score >= 55:
+            return "WEAK"
         return "NO TRADE"

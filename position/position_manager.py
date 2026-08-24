@@ -10,7 +10,7 @@ logger = logging.getLogger("position.manager")
 class PositionManager:
     """
     Manage position lifecycle with breakeven, trailing stops, and partial exits.
-    
+
     Rules:
     - Move SL to breakeven when price moves +1R (risk amount)
     - Close 50% at +1.5R
@@ -29,7 +29,7 @@ class PositionManager:
     ) -> None:
         """
         Initialize position manager with configurable rules.
-        
+
         Args:
             breakeven_trigger_r: R multiple to move SL to breakeven (default: 1.0)
             partial_exit_r: R multiple to take partial profits (default: 1.5)
@@ -85,6 +85,7 @@ class PositionManager:
         stop_loss = float(position.get("stop_loss", 0))
         risk_amount = abs(entry - stop_loss)
         open_time = position.get("open_time")
+        trailing_enabled = bool(position.get("trailing_enabled", True))
 
         # Validate inputs
         if risk_amount <= 0 or entry == 0:
@@ -106,7 +107,8 @@ class PositionManager:
                 open_time = parser.parse(open_time)
             if open_time.tzinfo is None:
                 open_time = open_time.replace(tzinfo=timezone.utc)
-            hours_held = (datetime.now(timezone.utc) - open_time).total_seconds() / 3600
+            hours_held = (datetime.now(timezone.utc) -
+                          open_time).total_seconds() / 3600
             if hours_held > self.max_hold_hours:
                 result.update({
                     "action": "close",
@@ -116,16 +118,16 @@ class PositionManager:
                 return result
 
         # 2. Trail remaining position at +2R
-        if current_r >= self.trailing_trigger_r:
+        if trailing_enabled and current_r >= self.trailing_trigger_r:
             # Calculate trailing stop distance
             atr = position.get("atr", risk_amount * 0.75)
             trail_distance = atr * self.trailing_distance_multiplier
-            
+
             if direction == "buy":
                 new_sl = current_price - trail_distance
             else:
                 new_sl = current_price + trail_distance
-            
+
             # Only trail if it improves the SL (moves in our favor)
             if direction == "buy" and new_sl > stop_loss:
                 result.update({
@@ -173,7 +175,7 @@ class PositionManager:
     def should_exit(self, position: dict[str, Any]) -> tuple[bool, str]:
         """
         Check if position should be closed immediately.
-        
+
         Returns:
             (should_exit, reason)
         """
@@ -185,7 +187,7 @@ class PositionManager:
     def get_trailing_stop(self, position: dict[str, Any]) -> float | None:
         """
         Calculate trailing stop level if applicable.
-        
+
         Returns:
             New SL level or None if no trailing stop
         """
@@ -197,7 +199,7 @@ class PositionManager:
     def should_move_to_breakeven(self, position: dict[str, Any]) -> tuple[bool, float | None]:
         """
         Check if SL should move to breakeven.
-        
+
         Returns:
             (should_move, new_sl_level)
         """
@@ -209,7 +211,7 @@ class PositionManager:
     def should_partial_exit(self, position: dict[str, Any]) -> tuple[bool, float]:
         """
         Check if partial exit should be taken.
-        
+
         Returns:
             (should_exit, percent_to_close)
         """

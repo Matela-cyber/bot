@@ -41,7 +41,7 @@ class VolatilityDetector:
         self.baseline_spread[resolved] = self._ema(
             self.baseline_spread.get(resolved), current_spread)
 
-        frame = self._get_ohlcv(resolved, "1m", 60)
+        frame = self._get_ohlcv(resolved, "15m", 100)
         if frame is None or len(frame) < 20:
             raise RuntimeError(f"Insufficient 1m data for {resolved}")
         current_atr = float(
@@ -87,7 +87,7 @@ class VolatilityDetector:
                 raise RuntimeError(f"Invalid point size for {resolved}")
             spread_multiplier = ((prices["ask"] - prices["bid"]) / point) / \
                 max(self.baseline_spread.get(resolved, 0.0), 1e-12)
-            frame = self._get_ohlcv(resolved, "1m", 30)
+            frame = self._get_ohlcv(resolved, "15m", 30)
             if frame is None or len(frame) < 5:
                 raise RuntimeError(
                     f"Insufficient current 1m data for {resolved}")
@@ -95,10 +95,13 @@ class VolatilityDetector:
                 (frame["high"] - frame["low"]).abs().tail(5).mean())
             atr_multiplier = current_atr / \
                 max(self.baseline_atr.get(resolved, 0.0), 1e-12)
-            current_volume = float(frame["tick_volume"].tail(
-                5).mean()) if "tick_volume" in frame.columns else 0.0
-            volume_multiplier = current_volume / max(self.baseline_volume.get(
-                resolved, 0.0), 1e-12) if self.baseline_volume.get(resolved, 0.0) else 1.0
+            if spread_multiplier <= 1.5 and "tick_volume" in frame.columns:
+                current_volume = float(frame["tick_volume"].tail(5).mean())
+                volume_multiplier = current_volume / max(
+                    self.baseline_volume.get(resolved, 0.0), 1e-12
+                ) if self.baseline_volume.get(resolved, 0.0) else 1.0
+            else:
+                volume_multiplier = 1.0
         except Exception as exc:
             logger.error("Volatility detection failed for %s: %s", symbol, exc)
             return {"level": "unavailable", "spread_multiplier": 0.0, "atr_multiplier": 0.0, "volume_multiplier": 0.0, "reason": f"market_data_unavailable: {exc}"}

@@ -55,6 +55,8 @@ class Repository:
                 "pnl_percentage": "FLOAT DEFAULT 0.0",
                 "position_size": "FLOAT DEFAULT 0.0",
                 "pattern_name": "VARCHAR(50)",
+                "score": "INTEGER DEFAULT 0",
+                "regime": "VARCHAR(20)",
                 "falcon_scores": "TEXT",
                 "mae_pips": "INTEGER DEFAULT 0",
                 "mfe_pips": "INTEGER DEFAULT 0",
@@ -79,19 +81,22 @@ class Repository:
             existing_trade_columns = {row[1] for row in result.fetchall()}
             for column_name, column_definition in required_trade_columns.items():
                 if column_name not in existing_trade_columns:
-                    conn.execute(text(f"ALTER TABLE trades ADD COLUMN {column_name} {column_definition}"))
+                    conn.execute(
+                        text(f"ALTER TABLE trades ADD COLUMN {column_name} {column_definition}"))
 
             result = conn.execute(text("PRAGMA table_info(pattern_events)"))
             existing_pattern_columns = {row[1] for row in result.fetchall()}
             for column_name, column_definition in required_pattern_columns.items():
                 if column_name not in existing_pattern_columns:
-                    conn.execute(text(f"ALTER TABLE pattern_events ADD COLUMN {column_name} {column_definition}"))
+                    conn.execute(
+                        text(f"ALTER TABLE pattern_events ADD COLUMN {column_name} {column_definition}"))
 
             result = conn.execute(text("PRAGMA table_info(daily_stats)"))
             existing_daily_stat_columns = {row[1] for row in result.fetchall()}
             for column_name, column_definition in required_daily_stat_columns.items():
                 if column_name not in existing_daily_stat_columns:
-                    conn.execute(text(f"ALTER TABLE daily_stats ADD COLUMN {column_name} {column_definition}"))
+                    conn.execute(
+                        text(f"ALTER TABLE daily_stats ADD COLUMN {column_name} {column_definition}"))
             conn.commit()
 
     @contextmanager
@@ -184,6 +189,8 @@ class Repository:
             pnl_percentage=float(payload.get("pnl_percentage") or 0.0),
             position_size=float(payload.get("position_size") or 0.0),
             pattern_name=payload.get("pattern_name"),
+            score=int(payload.get("score", 0) or 0),
+            regime=payload.get("regime"),
             falcon_scores=falcon_scores,
             mae_pips=int(payload.get("mae_pips", 0)),
             mfe_pips=int(payload.get("mfe_pips", 0)),
@@ -191,7 +198,8 @@ class Repository:
             exit_reason=payload.get("exit_reason"),
             rl_action_taken=payload.get("rl_action_taken"),
             reward=float(payload.get("reward") or 0.0),
-            falcon_overall_score=float(payload.get("falcon_overall_score") or 0.0),
+            falcon_overall_score=float(
+                payload.get("falcon_overall_score") or 0.0),
             falcon_report=falcon_report,
         )
         with self.session() as session:
@@ -212,18 +220,26 @@ class Repository:
                     daily_pnl=float(payload.get("daily_pnl") or 0.0),
                     daily_loss=float(payload.get("daily_loss") or 0.0),
                     drawdown_peak=float(payload.get("drawdown_peak") or 0.0),
-                    drawdown_percent=float(payload.get("drawdown_percent") or 0.0),
+                    drawdown_percent=float(
+                        payload.get("drawdown_percent") or 0.0),
                     halt_triggered=bool(payload.get("halt_triggered", False)),
                 )
                 session.add(existing)
             else:
-                self._update_float_attribute(existing, "start_balance", payload.get("start_balance"))
-                self._update_float_attribute(existing, "end_balance", payload.get("end_balance"))
-                self._update_float_attribute(existing, "daily_pnl", payload.get("daily_pnl"))
-                self._update_float_attribute(existing, "daily_loss", payload.get("daily_loss"))
-                self._update_float_attribute(existing, "drawdown_peak", payload.get("drawdown_peak"))
-                self._update_float_attribute(existing, "drawdown_percent", payload.get("drawdown_percent"))
-                self._update_bool_attribute(existing, "halt_triggered", payload.get("halt_triggered"), False)
+                self._update_float_attribute(
+                    existing, "start_balance", payload.get("start_balance"))
+                self._update_float_attribute(
+                    existing, "end_balance", payload.get("end_balance"))
+                self._update_float_attribute(
+                    existing, "daily_pnl", payload.get("daily_pnl"))
+                self._update_float_attribute(
+                    existing, "daily_loss", payload.get("daily_loss"))
+                self._update_float_attribute(
+                    existing, "drawdown_peak", payload.get("drawdown_peak"))
+                self._update_float_attribute(
+                    existing, "drawdown_percent", payload.get("drawdown_percent"))
+                self._update_bool_attribute(
+                    existing, "halt_triggered", payload.get("halt_triggered"), False)
 
     def update_trade_exit(
         self,
@@ -247,7 +263,8 @@ class Repository:
                 raise ValueError(f"Trade {trade_id} not found")
 
             entry_price_raw = getattr(trade, "entry_price", None)
-            entry_price = float(entry_price_raw) if entry_price_raw is not None else None
+            entry_price = float(
+                entry_price_raw) if entry_price_raw is not None else None
 
             setattr(trade, "exit_price", float(exit_price))
             setattr(trade, "pnl_amount", float(pnl))
@@ -259,7 +276,8 @@ class Repository:
             setattr(trade, "hold_time_minutes", int(hold_time))
 
             if entry_price is not None and entry_price != 0.0:
-                setattr(trade, "pnl_percentage", float((float(pnl) / entry_price) * 100))
+                setattr(trade, "pnl_percentage", float(
+                    (float(pnl) / entry_price) * 100))
             else:
                 setattr(trade, "pnl_percentage", 0.0)
 
@@ -269,7 +287,8 @@ class Repository:
 
     def add_failed_order(self, payload: dict[str, Any]) -> None:
         error_code_value = payload.get("error_code")
-        error_code = int(error_code_value) if error_code_value is not None else None
+        error_code = int(
+            error_code_value) if error_code_value is not None else None
 
         failed_order = FailedOrder(
             symbol=payload.get("symbol", ""),

@@ -10,21 +10,23 @@ import pandas as pd
 import pytz
 from sqlalchemy import text
 
-from config import settings
+from config import LOCAL_TIMEZONE, settings
 from core.portfolio_manager import PortfolioManager
 from core.self_diagnostic import CycleReport
+from core.session_manager import SessionManager
 from data.ingestor import fetch_mt5_ohlcv
 from data.preprocessor import prepare_ohlcv
 from db.repository import Repository
 from execution.mt5_client import MT5Client
 from filter.liquidity_filter import LowLiquidityFilter
-from filter.news_filter import NewsFilter
+from filter.volatility_detector import VolatilityDetector
 from filter.trading_filter import TradingFilter
 from filter.weekend_filter import WeekendFilter
 from notifications.telegram_sender import TelegramSender
 from position.position_manager import PositionManager
 from regime.market_regime import MarketRegime
 from risk.manager import RiskManager
+from risk.sizing import calculate_lot_size
 from signals.signal_engine import SignalEngine
 from smc.structure import StructureDetector
 from strategies.breakout_strategy import BreakoutStrategy
@@ -42,23 +44,28 @@ class AdaptiveTradingBot:
 
     def __init__(self) -> None:
         """Initialize bot components and state."""
-        self.mt5_client = MT5Client(settings.mt5_account, settings.mt5_password, settings.mt5_server)
+        self.mt5_client = MT5Client(
+            settings.mt5_account, settings.mt5_password, settings.mt5_server)
         self.risk_manager = RiskManager(
             account_balance=float(settings.account_balance),
             daily_loss=0.0,
             current_equity=None,
             peak_equity=None,
         )
-        self.telegram_sender = TelegramSender(settings.telegram_token, settings.telegram_chat_id)
-        self.news_filter = NewsFilter()
+        self.telegram_sender = TelegramSender(
+            settings.telegram_token, settings.telegram_chat_id)
+        self.volatility_detector = VolatilityDetector(self.mt5_client)
         self.weekend_filter = WeekendFilter()
         self.liquidity_filter = LowLiquidityFilter()
-        self.trading_filter = TradingFilter(self.news_filter, self.weekend_filter, self.liquidity_filter)
+        self.trading_filter = TradingFilter(
+            self.volatility_detector, self.weekend_filter, self.liquidity_filter)
         self.signal_engine = SignalEngine()
         self.candlestick_validator = CandlestickValidator()
         self.repository = Repository(settings.database_url)
-        self.portfolio_manager = PortfolioManager({"TRADING_PAIRS": settings.trading_pairs})
+        self.portfolio_manager = PortfolioManager(
+            {"TRADING_PAIRS": settings.trading_pairs})
         self.position_manager = PositionManager()
+        self.session_manager = SessionManager()
 
         self.trading_pairs = settings.trading_pairs
         self.pair_timeframes = settings.pair_timeframes
@@ -75,6 +82,7 @@ class AdaptiveTradingBot:
         self.last_health_check: datetime | None = None
         self._last_reconciled_positions: set[int] = set()
         self._partial_exit_tickets: set[int] = set()
+        self.last_session: str | None = None
 
         self.cycle_types = {
             "standard": 900,
@@ -89,9 +97,11 @@ class AdaptiveTradingBot:
 
         initial_report = self.health_check()
         if not initial_report.is_healthy():
-            logger.critical("Initial health check failed: %s", initial_report.summary())
+            logger.critical("Initial health check failed: %s",
+                            initial_report.summary())
             try:
-                self.telegram_sender.send(f"🚨 Bot health check failed: {initial_report.summary()}")
+                self.telegram_sender.send(
+                    f"🚨 Bot health check failed: {initial_report.summary()}")
             except Exception:
                 logger.warning("Telegram health alert failed")
             return
@@ -103,7 +113,17 @@ class AdaptiveTradingBot:
             return
 
         try:
-            self.telegram_sender.send("🚀 Bot started successfully (self-aware mode)")
+            self.telegram_sender.send(
+                "🚀 Bot started successfully (self-aware mode)")
+            local_now = datetime.now(LOCAL_TIMEZONE)
+            utc_now = local_now.astimezone(pytz.UTC)
+            self.telegram_sender.send(
+                "🕐 TIMEZONE CONFIGURATION\n"
+                "Local Timezone: Africa/Johannesburg (UTC+2)\n"
+                f"Current Local Time: {local_now:%Y-%m-%d %H:%M:%S}\n"
+                f"Current UTC Time: {utc_now:%Y-%m-%d %H:%M:%S}\n"
+                "Friday Cutoff: 17:00 local time (15:00 UTC)"
+            )
         except Exception:
             logger.warning("Telegram startup alert failed")
 
@@ -119,7 +139,8 @@ class AdaptiveTradingBot:
                     if self.error_count >= self.max_errors:
                         logger.critical("Max errors reached, shutting down")
                         try:
-                            self.telegram_sender.send("🚨 CRITICAL: Max errors reached, bot shutting down")
+                            self.telegram_sender.send(
+                                "🚨 CRITICAL: Max errors reached, bot shutting down")
                         except Exception:
                             pass
                         return
@@ -140,7 +161,8 @@ class AdaptiveTradingBot:
             except Exception as exc:
                 logger.exception("Unhandled error: %s", exc)
                 try:
-                    self.telegram_sender.send(f"⚠️ Bot error: {str(exc)[:100]}")
+                    self.telegram_sender.send(
+                        f"⚠️ Bot error: {str(exc)[:100]}")
                 except Exception:
                     pass
                 self.error_count += 1
@@ -181,11 +203,13 @@ class AdaptiveTradingBot:
 
         try:
             if settings.use_mt5_execution and not self.mt5_client.is_configured():
-                report.add_check("MT5 Configuration", False, "MT5 not configured")
+                report.add_check("MT5 Configuration", False,
+                                 "MT5 not configured")
             else:
                 self.mt5_client.connect()
                 balance = self.mt5_client.get_balance()
-                report.add_check("MT5 Connection", True, f"Connected, balance: ${balance:.2f}")
+                report.add_check("MT5 Connection", True,
+                                 f"Connected, balance: ${balance:.2f}")
                 report.add_success("MT5 connected")
         except Exception as exc:
             report.add_check("MT5 Connection", False, str(exc))
@@ -206,7 +230,8 @@ class AdaptiveTradingBot:
                 report.add_check("Data Fetching", False, "No data received")
                 report.add_error("Data fetching returned empty OHLCV frame")
             else:
-                report.add_check("Data Fetching", True, f"Received {len(data)} candles")
+                report.add_check("Data Fetching", True,
+                                 f"Received {len(data)} candles")
                 report.add_success("Market data available")
         except Exception as exc:
             report.add_check("Data Fetching", False, str(exc))
@@ -214,8 +239,10 @@ class AdaptiveTradingBot:
 
         try:
             if settings.telegram_token and settings.telegram_chat_id:
-                success = self.telegram_sender.send("🩺 Health check: Bot is alive")
-                report.add_check("Telegram", bool(success), "Alert send status")
+                success = self.telegram_sender.send(
+                    "🩺 Health check: Bot is alive")
+                report.add_check("Telegram", bool(
+                    success), "Alert send status")
                 if success:
                     report.add_success("Telegram alerting healthy")
             else:
@@ -265,7 +292,8 @@ class AdaptiveTradingBot:
                 previous = self.open_positions.get(ticket)
                 self.repository.update_trade_exit(
                     str(ticket),
-                    float(previous.get("current_price", previous.get("entry_price", 0.0))) if previous else 0.0,
+                    float(previous.get("current_price", previous.get(
+                        "entry_price", 0.0))) if previous else 0.0,
                     float(previous.get("pnl", 0.0)) if previous else 0.0,
                     None,
                     None,
@@ -275,12 +303,14 @@ class AdaptiveTradingBot:
                     "broker_closed",
                 )
             except Exception as exc:
-                logger.warning("Could not persist closed position %s: %s", ticket, exc)
+                logger.warning(
+                    "Could not persist closed position %s: %s", ticket, exc)
         self.open_positions = {int(pos["ticket"]): pos for pos in positions}
         self.portfolio_manager.total_open_positions = len(positions)
         for symbol in self.trading_pairs:
             pair_state = self.portfolio_manager.get_pair_state(symbol)
-            pair_state.open_positions = [pos for pos in positions if pos["symbol"] == symbol]
+            pair_state.open_positions = [
+                pos for pos in positions if pos["symbol"] == symbol]
             pair_state.update_best_score()
         self._last_reconciled_positions = set(self.open_positions)
         logger.info("Reconciled %s bot-owned open position(s)", len(positions))
@@ -294,6 +324,28 @@ class AdaptiveTradingBot:
         self._reset_daily_stats(current_time)
         self._sync_positions()
 
+        if self.weekend_filter.should_close_all_positions(current_time):
+            logger.info(
+                "Friday 22:00 UTC reached. Closing all bot-owned positions.")
+            report.add_check("Friday Closeout", True,
+                             "Closing bot-owned positions")
+            self._close_all_positions(report)
+            return report
+
+        session = self.session_manager.get_session(current_time)
+        spread_risk = self.session_manager.get_spread_risk(current_time)
+        if self.last_session != session["name"]:
+            self.last_session = session["name"]
+            try:
+                self.telegram_sender.send(
+                    f"🕐 Session Change: {session['name'].upper()}\n"
+                    f"Risk: {float(session['risk_multiplier']) * 100:.0f}%\n"
+                    f"Max Positions: {session['max_positions']}\n"
+                    f"{session['description']}"
+                )
+            except Exception:
+                logger.warning("Telegram session-change alert failed")
+
         if cycle_type in {"monitoring", "emergency"}:
             self._monitor_positions(report)
             return report
@@ -305,6 +357,17 @@ class AdaptiveTradingBot:
             return report
         report.add_check("Safety Gates", True, "All safety gates passed")
         report.add_success("Safety gates passed")
+
+        if spread_risk <= 0:
+            report.add_check("Trading Session", False, session["description"])
+            report.add_warning(
+                "Trading blocked: night spread window (00:00-04:00 UTC)")
+            return report
+        report.add_check(
+            "Trading Session",
+            True,
+            f"{session['description']}; spread risk {spread_risk:.2f}",
+        )
 
         limits_ok, limits_reason = self.portfolio_manager.check_global_limits()
         if not limits_ok:
@@ -320,7 +383,8 @@ class AdaptiveTradingBot:
 
         for symbol in self.trading_pairs:
             try:
-                result = self._process_pair(symbol, current_time, float(filter_result.get("risk_multiplier", 1.0)))
+                result = self._process_pair(symbol, current_time, float(
+                    filter_result.get("risk_multiplier", 1.0)) * spread_risk, session)
                 if result.get("processed"):
                     pairs_processed += 1
                 if result.get("skipped"):
@@ -356,9 +420,33 @@ class AdaptiveTradingBot:
 
         return report
 
-    def _process_pair(self, symbol: str, current_time: datetime, risk_multiplier: float = 1.0) -> dict[str, Any]:
+    def _close_all_positions(self, report: CycleReport) -> None:
+        """Close every position owned by this bot and report each outcome."""
+        try:
+            positions = self.mt5_client.get_open_positions(bot_only=True)
+            for position in positions:
+                ticket = int(position["ticket"])
+                try:
+                    self.mt5_client.close_position(ticket)
+                    report.add_success(
+                        f"Position {ticket} closed for Friday closeout")
+                except Exception as exc:
+                    report.add_error(
+                        f"Position {ticket} closeout failed: {exc}")
+            self._sync_positions()
+        except Exception as exc:
+            report.add_error(f"Friday closeout failed: {exc}")
+
+    def _process_pair(
+        self,
+        symbol: str,
+        current_time: datetime,
+        risk_multiplier: float = 1.0,
+        session: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Process one symbol across multiple timeframes, validate candlesticks, and score the trade."""
-        result: dict[str, Any] = {"processed": False, "skipped": True, "signal_generated": False, "trade_executed": False}
+        result: dict[str, Any] = {"processed": False, "skipped": True,
+                                  "signal_generated": False, "trade_executed": False}
 
         if symbol in self._unavailable_symbols:
             return result
@@ -366,12 +454,27 @@ class AdaptiveTradingBot:
         try:
             resolved_symbol = self.mt5_client.resolve_symbol(symbol)
             result["processed"] = True
+            volatility_trade, volatility_reason, volatility_multiplier = self.volatility_detector.should_trade(
+                resolved_symbol)
+            if not volatility_trade:
+                logger.info("%s: Trading blocked by volatility: %s",
+                            symbol, volatility_reason)
+                try:
+                    self.telegram_sender.send(
+                        f"⚠️ Volatility block for {symbol}: {volatility_reason}")
+                except Exception:
+                    logger.warning(
+                        "Telegram volatility alert failed for %s", symbol)
+                return result
+            effective_risk_multiplier = risk_multiplier * volatility_multiplier
             frames: dict[str, pd.DataFrame] = {}
             for tf in ("4h", "1h", "15m"):
-                data = fetch_mt5_ohlcv(days=180, timeframe=tf, symbol=resolved_symbol)
+                data = fetch_mt5_ohlcv(
+                    days=180, timeframe=tf, symbol=resolved_symbol)
                 frame = prepare_ohlcv(data)
                 if frame.empty:
-                    raise ValueError(f"No {tf} OHLCV data for {resolved_symbol}")
+                    raise ValueError(
+                        f"No {tf} OHLCV data for {resolved_symbol}")
                 frames[tf] = frame
 
             swings: dict[str, Any] = {}
@@ -397,12 +500,14 @@ class AdaptiveTradingBot:
                 logger.info("%s: Mixed regime detected, skipping", symbol)
                 return result
 
-            signal = self._select_strategy_and_signal(frames["15m"], regimes["15m"])
+            signal = self._select_strategy_and_signal(
+                frames["15m"], regimes["15m"])
             if signal["signal"] == "none":
                 logger.info("%s: No signal generated", symbol)
                 return result
 
-            candle_result = self.candlestick_validator.validate(frames["15m"], signal["signal"])
+            candle_result = self.candlestick_validator.validate(
+                frames["15m"], signal["signal"])
             if candle_result.get("confirmed"):
                 logger.info(
                     "%s: Candlestick confirmed %s (+%.0f%%)",
@@ -429,10 +534,23 @@ class AdaptiveTradingBot:
                 frame_15m=frames["15m"],
                 candlestick_result=candle_result,
             )
-            logger.info("%s: Signal scored %s (%s)", symbol, scored["score"], scored["grade"])
+            logger.info("%s: Signal scored %s (%s)", symbol,
+                        scored["score"], scored["grade"])
 
             if scored["score"] < settings.min_score:
-                logger.info("%s: Score %s < %s threshold, skipping", symbol, scored["score"], settings.min_score)
+                logger.info("%s: Score %s < %s threshold, skipping",
+                            symbol, scored["score"], settings.min_score)
+                if 65 <= scored["score"] < 70:
+                    logger.info(
+                        "%s: Score %s close but below 70 threshold", symbol, scored["score"])
+                    try:
+                        self.telegram_sender.send(
+                            f"⚠️ {symbol}: Signal score {scored['score']} just below 70 threshold "
+                            "(would have been accepted before)"
+                        )
+                    except Exception:
+                        logger.warning(
+                            "Telegram near-threshold alert failed for %s", symbol)
                 return result
 
             entry = signal.get("entry", 0.0)
@@ -440,21 +558,30 @@ class AdaptiveTradingBot:
             tp = signal.get("take_profit", 0.0)
 
             if not all([entry > 0, sl > 0, tp > 0]):
-                logger.warning("%s: Invalid signal prices (entry=%s, sl=%s, tp=%s)", symbol, entry, sl, tp)
+                logger.warning(
+                    "%s: Invalid signal prices (entry=%s, sl=%s, tp=%s)", symbol, entry, sl, tp)
                 return result
 
             if signal["signal"] == "buy":
                 if not (entry > sl and entry < tp):
-                    logger.warning("%s: Invalid BUY levels (SL=%s, entry=%s, TP=%s)", symbol, sl, entry, tp)
+                    logger.warning(
+                        "%s: Invalid BUY levels (SL=%s, entry=%s, TP=%s)", symbol, sl, entry, tp)
                     return result
             elif signal["signal"] == "sell":
                 if not (entry < sl and entry > tp):
-                    logger.warning("%s: Invalid SELL levels (SL=%s, entry=%s, TP=%s)", symbol, sl, entry, tp)
+                    logger.warning(
+                        "%s: Invalid SELL levels (SL=%s, entry=%s, TP=%s)", symbol, sl, entry, tp)
                     return result
 
             pair_state = self.portfolio_manager.get_pair_state(symbol)
             if pair_state.consecutive_losses >= 3:
                 logger.info("%s: Paused due to 3 consecutive losses", symbol)
+                return result
+
+            active_session = session or self.session_manager.get_session(
+                current_time)
+            if self.portfolio_manager.get_total_positions() >= int(active_session["max_positions"]):
+                logger.info("%s: Session position limit reached", symbol)
                 return result
 
             approved, approval_reason = self.portfolio_manager.can_open_position(
@@ -463,13 +590,16 @@ class AdaptiveTradingBot:
                 score_or_risk=float(scored["score"]),
             )
             if not approved:
-                logger.info("%s: Position rejected: %s", symbol, approval_reason)
+                logger.info("%s: Position rejected: %s",
+                            symbol, approval_reason)
                 return result
 
             result["signal_generated"] = True
-            quality_risk = self.portfolio_manager.get_dynamic_risk(float(scored["score"]))
-            if quality_risk <= 0:
-                logger.info("%s: No risk allocation for score %s", symbol, scored["score"])
+            quality_multiplier = self.portfolio_manager.get_quality_multiplier(
+                float(scored["score"]))
+            if quality_multiplier <= 0:
+                logger.info("%s: No risk allocation for score %s",
+                            symbol, scored["score"])
                 return result
 
             execution = self._execute_trade(
@@ -477,9 +607,13 @@ class AdaptiveTradingBot:
                 signal,
                 scored,
                 regimes["1h"],
-                quality_risk * max(0.0, min(1.0, risk_multiplier)),
+                quality_multiplier,
+                float(active_session["risk_multiplier"]),
+                max(0.0, min(1.0, effective_risk_multiplier)),
+                active_session,
             )
-            result["trade_executed"] = execution.get("status") in {"accepted", "accepted_unreconciled"}
+            result["trade_executed"] = execution.get(
+                "status") in {"accepted", "accepted_unreconciled"}
             result["skipped"] = not result["trade_executed"]
             if result["trade_executed"]:
                 self.portfolio_manager.record_override_position()
@@ -489,7 +623,8 @@ class AdaptiveTradingBot:
             message = str(exc)
             if "not found in MT5" in message or "symbol discovery is unavailable" in message:
                 self._unavailable_symbols.add(symbol)
-                logger.warning("%s unavailable in MT5; skipping it for this bot run", symbol)
+                logger.warning(
+                    "%s unavailable in MT5; skipping it for this bot run", symbol)
                 return result
             logger.error("%s: Error - %s", symbol, exc)
             return result
@@ -500,9 +635,11 @@ class AdaptiveTradingBot:
             positions = self.mt5_client.get_open_positions(bot_only=True)
             self.open_positions = {pos["ticket"]: pos for pos in positions}
             if positions:
-                report.add_check("Position Monitoring", True, f"Monitoring {len(positions)} positions")
+                report.add_check("Position Monitoring", True,
+                                 f"Monitoring {len(positions)} positions")
                 for pos in positions:
-                    report.add_success(f"Position {pos['ticket']}: PnL=${pos.get('pnl', 0.0):.2f}")
+                    report.add_success(
+                        f"Position {pos['ticket']}: PnL=${pos.get('pnl', 0.0):.2f}")
                     management = self.position_manager.manage({
                         "ticket": pos["ticket"],
                         "direction": pos["type"],
@@ -513,21 +650,32 @@ class AdaptiveTradingBot:
                         "volume": pos["volume"],
                         "pnl": pos["pnl"],
                         "open_time": pos.get("open_time"),
+                        "trailing_enabled": bool(
+                            self.session_manager.get_session(datetime.now(pytz.UTC))[
+                                "trailing_enabled"]
+                        ),
                     })
                     action = management.get("action")
                     if action in {"breakeven", "trail"}:
-                        self.mt5_client.modify_position(pos["ticket"], stop_loss=float(management["new_sl"]))
-                        report.add_success(f"Position {pos['ticket']}: {action} applied")
+                        self.mt5_client.modify_position(
+                            pos["ticket"], stop_loss=float(management["new_sl"]))
+                        report.add_success(
+                            f"Position {pos['ticket']}: {action} applied")
                     elif action == "partial_exit" and pos["ticket"] not in self._partial_exit_tickets:
-                        volume = float(pos["volume"]) * float(management["close_percent"])
-                        self.mt5_client.close_position(pos["ticket"], volume=volume)
+                        volume = float(pos["volume"]) * \
+                            float(management["close_percent"])
+                        self.mt5_client.close_position(
+                            pos["ticket"], volume=volume)
                         self._partial_exit_tickets.add(pos["ticket"])
-                        report.add_success(f"Position {pos['ticket']}: partial exit applied")
+                        report.add_success(
+                            f"Position {pos['ticket']}: partial exit applied")
                     elif action == "close":
                         self.mt5_client.close_position(pos["ticket"])
-                        report.add_success(f"Position {pos['ticket']}: closed by manager")
+                        report.add_success(
+                            f"Position {pos['ticket']}: closed by manager")
             else:
-                report.add_check("Position Monitoring", True, "No open positions")
+                report.add_check("Position Monitoring",
+                                 True, "No open positions")
         except Exception as exc:
             report.add_check("Position Monitoring", False, str(exc))
             report.add_error(f"Position monitoring failed: {exc}")
@@ -536,9 +684,11 @@ class AdaptiveTradingBot:
         """Reset daily totals at midnight UTC."""
         if self._last_reset_date != current_time.date():
             restored_pnl = self.repository.get_daily_pnl(current_time.date())
-            logger.info("Restoring daily PnL for %s: $%.2f", current_time.date(), restored_pnl)
+            logger.info("Restoring daily PnL for %s: $%.2f",
+                        current_time.date(), restored_pnl)
             self.portfolio_manager.global_daily_pnl = restored_pnl
-            self.risk_manager.daily_loss = self.repository.get_daily_loss(current_time.date())
+            self.risk_manager.daily_loss = self.repository.get_daily_loss(
+                current_time.date())
             self._last_reset_date = current_time.date()
 
     def _select_strategy_and_signal(self, frame: Any, regime: dict[str, Any]) -> dict[str, Any]:
@@ -557,7 +707,10 @@ class AdaptiveTradingBot:
         signal: dict[str, Any],
         scored: dict[str, Any],
         regime: dict[str, Any],
-        risk_allocation: float,
+        quality_multiplier: float,
+        session_multiplier: float,
+        spread_multiplier: float,
+        session: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Execute the trade only after validation, risk gating, and MT5 checks pass."""
         try:
@@ -565,36 +718,84 @@ class AdaptiveTradingBot:
                 raise ValueError(f"Invalid signal: {signal['signal']}")
 
             if not settings.use_mt5_execution or not self.mt5_client.is_configured():
-                logger.warning("%s: MT5 execution disabled or not configured", symbol)
+                logger.warning(
+                    "%s: MT5 execution disabled or not configured", symbol)
                 return {"status": "disabled", "symbol": symbol}
+
+            spread_ok, spread = self.mt5_client.check_spread(symbol)
+            if not spread_ok:
+                logger.warning(
+                    "%s: Spread too wide (%.2f points)", symbol, spread)
+                try:
+                    self.telegram_sender.send(
+                        f"⚠️ {symbol}: Spread {spread:.2f} points too wide. Trade skipped."
+                    )
+                except Exception:
+                    logger.warning(
+                        "Telegram spread alert failed for %s", symbol)
+                return {"status": "spread_blocked", "symbol": symbol, "spread": spread}
 
             entry_price = float(signal.get("entry", 0.0))
             stop_loss = float(signal.get("stop_loss", 0.0))
+            take_profit = float(signal.get("take_profit", 0.0))
+            active_session = session or self.session_manager.get_session(
+                datetime.now(pytz.UTC))
+            sl_multiplier = float(active_session.get("sl_multiplier", 1.0))
+            tp_multiplier = float(active_session.get("tp_multiplier", 1.0))
+            stop_loss = entry_price - abs(entry_price - stop_loss) * sl_multiplier \
+                if signal["signal"] == "buy" else entry_price + abs(entry_price - stop_loss) * sl_multiplier
+            take_profit = entry_price + abs(take_profit - entry_price) * tp_multiplier \
+                if signal["signal"] == "buy" else entry_price - abs(take_profit - entry_price) * tp_multiplier
             risk_per_unit = abs(entry_price - stop_loss)
             if risk_per_unit <= 0:
-                raise ValueError(f"Invalid risk distance: entry={entry_price}, SL={stop_loss}")
+                raise ValueError(
+                    f"Invalid risk distance: entry={entry_price}, SL={stop_loss}")
 
             equity = self.mt5_client.get_equity()
             self.risk_manager.account_balance = equity
-            self.risk_manager.daily_loss = self.repository.get_daily_loss(datetime.now(pytz.UTC).date())
-            limits_ok, limits_reason = self.risk_manager.check_limits(current_equity=equity)
+            self.risk_manager.daily_loss = self.repository.get_daily_loss(
+                datetime.now(pytz.UTC).date())
+            limits_ok, limits_reason = self.risk_manager.check_limits(
+                current_equity=equity)
             if not limits_ok:
-                logger.warning("%s: Risk limits blocked trade: %s", symbol, limits_reason)
+                logger.warning("%s: Risk limits blocked trade: %s",
+                               symbol, limits_reason)
                 return {"status": "risk_blocked", "reason": limits_reason, "symbol": symbol}
-            approved, approval_reason = self.risk_manager.approve_trade(signal["signal"], self.mt5_client)
+            approved, approval_reason = self.risk_manager.approve_trade(
+                signal["signal"], self.mt5_client)
             if not approved:
-                logger.warning("%s: Risk manager blocked trade: %s", symbol, approval_reason)
+                logger.warning("%s: Risk manager blocked trade: %s",
+                               symbol, approval_reason)
                 return {"status": "risk_blocked", "reason": approval_reason, "symbol": symbol}
 
-            risk_amount = equity * risk_allocation
-            lots = self.mt5_client.calculate_risk_lots(symbol, risk_amount, risk_per_unit)
+            symbol_spec = self.mt5_client.get_symbol_spec(symbol)
+            point = float(symbol_spec["point"])
+            if point <= 0:
+                raise RuntimeError(f"Invalid point size for {symbol}")
+            pip_size = point * 10.0
+            stop_loss_pips = max(1, round(risk_per_unit / pip_size))
+            lots, risk_amount = calculate_lot_size(
+                account_balance=equity,
+                stop_loss_pips=stop_loss_pips,
+                base_risk_percent=settings.risk_per_trade,
+                quality_multiplier=quality_multiplier,
+                session_multiplier=session_multiplier,
+                spread_multiplier=spread_multiplier,
+            )
+            logger.info(
+                "%s: Lots=%.2f, Risk=$%.2f, Stop=%s pips",
+                symbol,
+                lots,
+                risk_amount,
+                stop_loss_pips,
+            )
 
             order_result = self.mt5_client.place_order(
                 symbol=symbol,
                 order_type=signal["signal"],
                 lots=lots,
                 stop_loss=stop_loss,
-                take_profit=float(signal.get("take_profit", 0.0)),
+                take_profit=take_profit,
                 reference_entry_price=entry_price,
                 comment=f"score:{scored['score']}|regime:{regime['regime']}",
             )
@@ -613,7 +814,8 @@ class AdaptiveTradingBot:
                 )
                 return {"status": "rejected", "symbol": symbol, "reason": str(order_result)}
 
-            logger.info("%s: Order placed: ticket=%s status=%s", symbol, order_result.get("ticket"), order_result.get("status"))
+            logger.info("%s: Order placed: ticket=%s status=%s", symbol,
+                        order_result.get("ticket"), order_result.get("status"))
             position: dict[str, Any] = order_result.get("position") or {
                 "ticket": order_result.get("position_id") or order_result.get("ticket"),
                 "symbol": symbol,
@@ -637,7 +839,8 @@ class AdaptiveTradingBot:
                 "take_profit": signal.get("take_profit"),
                 "volume": lots,
             }
-            self.portfolio_manager.add_position_state(symbol, position_state, float(scored["score"]))
+            self.portfolio_manager.add_position_state(
+                symbol, position_state, float(scored["score"]))
             self.repository.add_trade({
                 "trade_id": str(position["ticket"]),
                 "symbol": symbol,
@@ -668,7 +871,8 @@ class AdaptiveTradingBot:
         except Exception as exc:
             logger.exception("%s: Trade execution failed: %s", symbol, exc)
             try:
-                self.telegram_sender.send(f"❌ Trade failed on {symbol}: {str(exc)[:100]}")
+                self.telegram_sender.send(
+                    f"❌ Trade failed on {symbol}: {str(exc)[:100]}")
             except Exception:
                 pass
             return {"status": "failed", "symbol": symbol, "reason": str(exc)}
@@ -683,22 +887,26 @@ class AdaptiveTradingBot:
             raise ValueError("Direction must be 'buy' or 'sell'")
 
         if live and not settings.use_mt5_execution:
-            raise RuntimeError("Live test orders require USE_MT5_EXECUTION=true")
+            raise RuntimeError(
+                "Live test orders require USE_MT5_EXECUTION=true")
         if live and not self.mt5_client.is_configured():
-            raise RuntimeError("Live test orders require MT5_ACCOUNT, MT5_PASSWORD, and MT5_SERVER")
+            raise RuntimeError(
+                "Live test orders require MT5_ACCOUNT, MT5_PASSWORD, and MT5_SERVER")
 
         self.mt5_client.connect()
         prices = self.mt5_client.get_price(symbol)
         entry = prices["ask"] if direction == "buy" else prices["bid"]
         atr = self.mt5_client.get_atr(symbol)
         if entry <= 0 or atr <= 0:
-            raise RuntimeError(f"Invalid live market data for {symbol}: entry={entry}, atr={atr}")
+            raise RuntimeError(
+                f"Invalid live market data for {symbol}: entry={entry}, atr={atr}")
 
         stop_distance = atr * 1.5
         target_distance = atr * 3.0
         stop_loss = entry - stop_distance if direction == "buy" else entry + stop_distance
         take_profit = entry + target_distance if direction == "buy" else entry - target_distance
-        risk_allocation = self.pair_risk_allocation.get(symbol, settings.risk_per_trade)
+        risk_allocation = self.pair_risk_allocation.get(
+            symbol, settings.risk_per_trade)
         risk_amount = float(settings.account_balance) * risk_allocation
         lots = risk_amount / (stop_distance * 100000)
         lots = round(max(0.01, min(lots, 1.0)), 2)
@@ -734,7 +942,8 @@ class AdaptiveTradingBot:
 
 def main() -> None:
     """Entry point for the adaptive trading bot."""
-    parser = argparse.ArgumentParser(description="Run the adaptive Forex trading bot.")
+    parser = argparse.ArgumentParser(
+        description="Run the adaptive Forex trading bot.")
     parser.add_argument(
         "--test-order",
         metavar="SYMBOL",

@@ -944,3 +944,465 @@ AttributeError: 'NoneType' object has no attribute 'is_weekend'
    Trades: 0
    Checks: 2/2 passed
    Successes: 2
+2026-08-24 07:24:13,311 | INFO | bot | Bot starting...
+2026-08-24 07:24:22,207 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 07:24:23,012 | INFO | bot | Restoring daily PnL for 2026-08-24: $0.00
+2026-08-24 07:24:23,025 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 07:24:23,030 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 05:24:23.010512+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 07:24:53,036 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 07:24:53,039 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 05:24:53.031289+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 07:25:23,045 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 07:25:23,048 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 05:25:23.040722+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:11:20,343 | INFO | bot | Bot starting...
+2026-08-24 09:11:35,231 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:11:36,961 | INFO | bot | Restoring daily PnL for 2026-08-24: $0.00
+2026-08-24 09:11:36,966 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:11:37,822 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:11:36.957941+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:12:07,826 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:12:07,829 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:12:07.823432+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:12:37,832 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:12:37,834 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:12:37.830260+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:13:07,837 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:13:07,839 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:13:07.835251+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:13:37,842 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:13:37,843 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:13:37.841242+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:14:07,846 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:14:07,848 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:14:07.844350+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:14:37,853 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:14:37,856 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:14:37.849438+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:15:07,862 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:15:07,864 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:15:07.858158+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:15:37,867 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:15:37,868 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:15:37.865296+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:16:07,871 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:16:07,872 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:16:07.869059+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:16:37,879 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:16:37,883 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:16:37.873694+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:17:07,889 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:17:07,893 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:17:07.885182+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:17:37,897 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:17:37,899 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:17:37.895302+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:18:07,907 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:18:07,911 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:18:07.900691+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:18:37,915 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:18:37,917 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:18:37.912889+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:19:07,920 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:19:07,922 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:19:07.918083+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:19:37,925 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:19:37,927 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:19:37.923040+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:20:07,930 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:20:07,931 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:20:07.927724+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:20:37,937 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:20:37,940 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:20:37.932319+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:21:07,946 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:21:07,949 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:21:07.941306+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:21:37,953 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:21:37,955 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:21:37.951121+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:22:07,959 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:22:07,962 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:22:07.956009+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:22:37,965 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:22:37,966 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:22:37.963178+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:23:07,973 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:23:07,978 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:23:07.967917+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:23:37,982 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:23:37,984 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:23:37.979617+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:24:07,988 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:24:07,991 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:24:07.985384+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:24:37,994 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:24:37,996 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:24:37.992062+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:25:08,000 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:25:08,003 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:25:07.997385+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:25:38,011 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:25:38,015 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:25:38.004689+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:26:08,020 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:26:08,023 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:26:08.016508+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:26:38,025 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:26:38,026 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:26:38.023699+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:27:08,033 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:27:08,038 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:27:08.027367+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:27:38,042 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:27:38,045 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:27:38.039500+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:28:08,050 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:28:08,053 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:28:08.046149+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:28:38,056 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:28:38,058 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:28:38.054260+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:29:08,061 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:29:08,062 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:29:08.059014+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:29:38,064 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:29:38,066 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:29:38.063075+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:30:08,070 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:30:08,073 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:30:08.067390+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:30:38,075 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:30:38,076 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:30:38.073771+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:31:08,083 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:31:08,087 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:31:08.077000+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:31:38,091 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:31:38,093 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:31:38.088663+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:32:08,099 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:32:08,101 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:32:08.094014+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:32:38,105 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:32:38,108 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:32:38.102399+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:33:08,110 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:33:08,111 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:33:08.108910+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:33:38,114 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:33:38,116 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:33:38.112436+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:34:08,120 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:34:08,122 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:34:08.116920+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:34:38,127 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:34:38,129 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:34:38.123605+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:35:08,136 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:35:08,139 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:35:08.130611+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:35:38,145 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:35:38,148 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:35:38.141382+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:36:08,150 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:36:08,151 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:36:08.149009+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:36:38,157 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:36:38,160 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:36:38.152561+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:37:08,165 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:37:08,167 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:37:08.161518+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:37:38,170 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:37:38,172 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:37:38.168312+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:38:08,177 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:38:08,180 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:38:08.172712+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2

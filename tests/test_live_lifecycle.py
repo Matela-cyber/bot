@@ -114,6 +114,18 @@ def test_broker_aware_risk_sizing(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setattr("execution.mt5_client.mt5", fake)
     client = MT5Client(account=1, password="secret", server="demo")
 
-    lots = client.calculate_risk_lots("EURUSD", risk_amount=10.0, stop_distance=0.01)
+    lots = client.calculate_risk_lots(
+        "EURUSD", risk_amount=10.0, stop_distance=0.01)
 
     assert lots == 0.1
+
+
+def test_spread_check_uses_live_quote_and_broker_baseline(monkeypatch: MonkeyPatch) -> None:
+    fake = LifecycleMT5()
+    monkeypatch.setattr("execution.mt5_client.mt5", fake)
+    client = MT5Client(account=1, password="secret", server="demo")
+
+    allowed, spread = client.check_spread("EURUSD")
+
+    assert allowed is True
+    assert spread == 1.0

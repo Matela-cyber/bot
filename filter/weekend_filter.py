@@ -3,9 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
-import pytz
-
-from config import settings
+from config import LOCAL_TIMEZONE, settings
 
 logger = logging.getLogger(__name__)
 
@@ -14,33 +12,44 @@ class WeekendFilter:
     """Filter that blocks trading during weekend market closures."""
 
     def is_weekend(self, current_time: datetime) -> bool:
-        """Return True when the current time is Saturday or Sunday UTC."""
-        utc_time = current_time.astimezone(pytz.UTC)
-        return utc_time.weekday() in (5, 6)
+        """Return True when the current local time is Saturday or Sunday."""
+        local_time = current_time.astimezone(LOCAL_TIMEZONE)
+        return local_time.weekday() in (5, 6)
 
     def is_market_open(self, current_time: datetime) -> tuple[bool, str]:
-        """Return whether Forex market trading hours are currently open."""
-        utc_time = current_time.astimezone(pytz.UTC)
-        weekday = utc_time.weekday()
-        hour = utc_time.hour
+        """Return whether Forex market trading hours are currently open in local time."""
+        local_time = current_time.astimezone(LOCAL_TIMEZONE)
+        weekday = local_time.weekday()
+        hour = local_time.hour
 
-        if weekday == 5:
+        if weekday >= 5:
             return False, "weekend"
 
-        if weekday == 4 and hour >= settings.market_close_friday:
+        if weekday == 4 and hour >= settings.friday_cutoff_hour:
             return False, "market_closes_friday"
-
-        if weekday == 6 and hour < settings.market_open_sunday:
-            return False, "market_not_open_yet"
 
         return True, "market_open"
 
+    def should_trade(self, current_time: datetime) -> tuple[bool, str]:
+        """Return whether new trades are allowed at the current local time."""
+        local_time = current_time.astimezone(LOCAL_TIMEZONE)
+        if local_time.weekday() >= 5:
+            return False, "weekend_trading_blocked"
+        if local_time.weekday() == 4 and local_time.hour >= settings.friday_cutoff_hour:
+            return False, "friday_cutoff_17h_local"
+        return True, "trading_allowed"
+
+    def should_close_all_positions(self, current_time: datetime) -> bool:
+        """Return whether bot-owned positions must be closed at Saturday 00:00 local."""
+        local_time = current_time.astimezone(LOCAL_TIMEZONE)
+        return local_time.weekday() == 5 and local_time.hour >= 0
+
     def get_trading_hours(self) -> dict[str, object]:
-        """Return configured Forex market open and close hours in UTC."""
-        now = datetime.now(pytz.UTC)
+        """Return configured Forex market hours expressed in local time."""
+        now = datetime.now(LOCAL_TIMEZONE)
         is_open, _ = self.is_market_open(now)
         return {
-            "opens": f"Sunday {settings.market_open_sunday:02d}:00 UTC",
-            "closes": f"Friday {settings.market_close_friday:02d}:00 UTC",
+            "opens": f"Sunday {settings.market_open_sunday:02d}:00 local",
+            "closes": f"Friday {settings.friday_cutoff_hour:02d}:00 local",
             "is_open": is_open,
         }

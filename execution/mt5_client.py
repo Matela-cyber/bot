@@ -29,7 +29,8 @@ class MT5Client:
 
     def _require_mt5(self) -> Any:
         if mt5 is None:
-            raise RuntimeError("MetaTrader5 is not installed. Install it with 'pip install MetaTrader5'.")
+            raise RuntimeError(
+                "MetaTrader5 is not installed. Install it with 'pip install MetaTrader5'.")
         return mt5
 
     def _connection_is_alive(self, mt5_module: Any) -> bool:
@@ -59,11 +60,14 @@ class MT5Client:
             return True
         self.connected = False
         if not self.account or not self.password or not self.server:
-            raise RuntimeError("MT5 account, password, and server must be configured in .env")
+            raise RuntimeError(
+                "MT5 account, password, and server must be configured in .env")
 
-        initialized = mt5_module.initialize(login=self.account, password=self.password, server=self.server)
+        initialized = mt5_module.initialize(
+            login=self.account, password=self.password, server=self.server)
         if not initialized:
-            raise RuntimeError(f"MT5 initialization failed: {mt5_module.last_error()}")
+            raise RuntimeError(
+                f"MT5 initialization failed: {mt5_module.last_error()}")
 
         self.connected = True
         return True
@@ -109,6 +113,37 @@ class MT5Client:
             "volume_step": float(getattr(info, "volume_step", 0.0) or 0.0),
         }
 
+    def check_spread(self, symbol: str) -> tuple[bool, float]:
+        """Check the live spread against the broker's typical spread in points."""
+        self.connect()
+        mt5_module = self._require_mt5()
+        resolved_symbol = self.resolve_symbol(symbol)
+        info = mt5_module.symbol_info(resolved_symbol)
+        tick = mt5_module.symbol_info_tick(resolved_symbol)
+        point = float(getattr(info, "point", 0.0)
+                      or 0.0) if info is not None else 0.0
+        if info is None or tick is None or point <= 0:
+            return False, 0.0
+
+        current_spread = round((float(tick.ask) - float(tick.bid)) / point, 8)
+        average_spread = float(getattr(info, "spread", 0.0) or 0.0)
+        if current_spread < 0:
+            return False, current_spread
+        if average_spread <= 0:
+            logger.warning(
+                "No broker spread baseline for %s; allowing current spread %.2f", resolved_symbol, current_spread)
+            return True, current_spread
+        if current_spread > average_spread * 2:
+            return False, current_spread
+        if current_spread > average_spread * 1.5:
+            logger.warning(
+                "Spread widening for %s: %.2f points (average: %.2f)",
+                resolved_symbol,
+                current_spread,
+                average_spread,
+            )
+        return True, current_spread
+
     def calculate_risk_lots(self, symbol: str, risk_amount: float, stop_distance: float) -> float:
         """Calculate volume from live broker tick economics and stop distance."""
         if risk_amount <= 0 or stop_distance <= 0:
@@ -117,15 +152,18 @@ class MT5Client:
         tick_size = float(spec["tick_size"])
         tick_value = float(spec["tick_value"])
         if tick_size <= 0 or tick_value <= 0:
-            raise RuntimeError(f"Broker returned invalid tick economics for {spec['symbol']}")
+            raise RuntimeError(
+                f"Broker returned invalid tick economics for {spec['symbol']}")
         raw_lots = risk_amount / ((stop_distance / tick_size) * tick_value)
         volume_min = float(spec["volume_min"])
         volume_max = float(spec["volume_max"])
         volume_step = float(spec["volume_step"])
         if volume_min <= 0 or volume_step <= 0:
-            raise RuntimeError(f"Broker returned invalid volume settings for {spec['symbol']}")
+            raise RuntimeError(
+                f"Broker returned invalid volume settings for {spec['symbol']}")
         if raw_lots < volume_min:
-            raise RuntimeError(f"Minimum volume {volume_min} exceeds risk budget for {spec['symbol']}")
+            raise RuntimeError(
+                f"Minimum volume {volume_min} exceeds risk budget for {spec['symbol']}")
         lots = min(raw_lots, volume_max) if volume_max > 0 else raw_lots
         lots = (lots // volume_step) * volume_step
         return round(max(volume_min, lots), 8)
@@ -146,23 +184,28 @@ class MT5Client:
 
         symbols_get = getattr(mt5_module, "symbols_get", None)
         if symbols_get is None:
-            raise RuntimeError(f"Symbol {requested} not found in MT5 and symbol discovery is unavailable")
+            raise RuntimeError(
+                f"Symbol {requested} not found in MT5 and symbol discovery is unavailable")
 
         candidates = cast(list[Any], symbols_get() or [])
-        normalized_requested = "".join(character for character in requested if character.isalnum())
+        normalized_requested = "".join(
+            character for character in requested if character.isalnum())
         matches: list[str] = []
         for candidate in candidates:
             candidate_name = str(getattr(candidate, "name", candidate))
-            normalized_candidate = "".join(character for character in candidate_name.upper() if character.isalnum())
+            normalized_candidate = "".join(
+                character for character in candidate_name.upper() if character.isalnum())
             if normalized_candidate == normalized_requested or normalized_candidate.startswith(normalized_requested):
                 matches.append(candidate_name)
 
         if not matches:
-            raise RuntimeError(f"Symbol {requested} not found in MT5; configure the broker symbol name")
+            raise RuntimeError(
+                f"Symbol {requested} not found in MT5; configure the broker symbol name")
 
         resolved = sorted(matches, key=lambda name: (len(name), name))[0]
         if hasattr(mt5_module, "symbol_select") and not mt5_module.symbol_select(resolved, True):
-            raise RuntimeError(f"MT5 could not select resolved symbol {resolved} for {requested}")
+            raise RuntimeError(
+                f"MT5 could not select resolved symbol {resolved} for {requested}")
         logger.info("Resolved broker symbol %s -> %s", requested, resolved)
         return resolved
 
@@ -172,7 +215,8 @@ class MT5Client:
         resolved_symbol = self.resolve_symbol(symbol)
         tick = mt5_module.symbol_info_tick(resolved_symbol)
         if tick is None:
-            raise RuntimeError(f"MT5 could not fetch tick data for {resolved_symbol}")
+            raise RuntimeError(
+                f"MT5 could not fetch tick data for {resolved_symbol}")
         return {"bid": float(tick.bid), "ask": float(tick.ask)}
 
     @staticmethod
@@ -184,27 +228,32 @@ class MT5Client:
             try:
                 return float(rate[field])
             except (KeyError, IndexError, TypeError) as exc:
-                raise RuntimeError(f"MT5 rate row is missing field '{field}'") from exc
+                raise RuntimeError(
+                    f"MT5 rate row is missing field '{field}'") from exc
 
     def get_atr(self, symbol: str, period: int = 14) -> float:
         self.connect()
         mt5_module = self._require_mt5()
         resolved_symbol = self.resolve_symbol(symbol)
 
-        ticks = mt5_module.copy_rates_from_pos(resolved_symbol, mt5_module.TIMEFRAME_M15, 0, period + 1)
+        ticks = mt5_module.copy_rates_from_pos(
+            resolved_symbol, mt5_module.TIMEFRAME_M15, 0, period + 1)
         if ticks is None or len(ticks) < period + 1:
-            raise RuntimeError(f"MT5 could not fetch enough OHLCV bars for ATR on {resolved_symbol}")
+            raise RuntimeError(
+                f"MT5 could not fetch enough OHLCV bars for ATR on {resolved_symbol}")
 
         true_ranges: list[float] = []
         for i in range(1, len(ticks)):
             high = self._rate_value(ticks[i], "high")
             low = self._rate_value(ticks[i], "low")
             prev_close = self._rate_value(ticks[i - 1], "close")
-            true_range = max(high - low, abs(high - prev_close), abs(low - prev_close))
+            true_range = max(high - low, abs(high - prev_close),
+                             abs(low - prev_close))
             true_ranges.append(true_range)
 
         if not true_ranges:
-            raise RuntimeError("ATR calculation failed due to missing range data")
+            raise RuntimeError(
+                "ATR calculation failed due to missing range data")
 
         return sum(true_ranges[-period:]) / float(period)
 
@@ -221,9 +270,11 @@ class MT5Client:
         resolved_symbol = self.resolve_symbol(symbol)
         tick = mt5_module.symbol_info_tick(resolved_symbol)
         if tick is None:
-            raise RuntimeError(f"MT5 could not fetch tick data for {resolved_symbol}")
+            raise RuntimeError(
+                f"MT5 could not fetch tick data for {resolved_symbol}")
 
-        live_price = float(tick.ask) if direction.lower() == "buy" else float(tick.bid)
+        live_price = float(tick.ask) if direction.lower(
+        ) == "buy" else float(tick.bid)
         if abs(entry - live_price) <= 0.0005:
             return entry, sl, tp
 
@@ -276,14 +327,16 @@ class MT5Client:
         }
         code = getattr(result, "retcode", None)
         comment = getattr(result, "comment", None)
-        message: str = known_codes.get(int(code) if code is not None else 0, "unknown_error")
+        message: str = known_codes.get(
+            int(code) if code is not None else 0, "unknown_error")
         if comment:
             message = f"{message}: {comment}"
         return message
 
     def _position_dict(self, position: Any) -> dict[str, Any]:
         """Convert an MT5 position record into the bot's canonical shape."""
-        position_type = getattr(position, "type", self._require_mt5().ORDER_TYPE_BUY)
+        position_type = getattr(
+            position, "type", self._require_mt5().ORDER_TYPE_BUY)
         return {
             "ticket": int(position.ticket),
             "symbol": str(position.symbol),
@@ -352,7 +405,8 @@ class MT5Client:
         volume_step = symbol_info.volume_step
 
         # Validate lot size
-        lots = self._normalize_volume(float(lots), float(min_lot), float(volume_step) if volume_step is not None else None)
+        lots = self._normalize_volume(float(lots), float(min_lot), float(
+            volume_step) if volume_step is not None else None)
 
         # Get current price
         tick = mt5_module.symbol_info_tick(symbol)
@@ -373,10 +427,12 @@ class MT5Client:
         # If the trade plan was generated from a stale frame price, preserve the intended risk distances against the live entry price.
         if reference_entry_price is not None and stop_loss is not None:
             stop_distance = abs(reference_entry_price - float(stop_loss))
-            stop_loss = entry_price - stop_distance if order_type_upper == "buy" else entry_price + stop_distance
+            stop_loss = entry_price - \
+                stop_distance if order_type_upper == "buy" else entry_price + stop_distance
         if reference_entry_price is not None and take_profit is not None:
             tp_distance = abs(float(take_profit) - reference_entry_price)
-            take_profit = entry_price + tp_distance if order_type_upper == "buy" else entry_price - tp_distance
+            take_profit = entry_price + \
+                tp_distance if order_type_upper == "buy" else entry_price - tp_distance
 
         # Calculate SL/TP with validation
         sl_price = 0.0
@@ -384,16 +440,19 @@ class MT5Client:
         min_distance = float(min_stop) * float(point)
 
         if stop_loss is not None and stop_loss > 0:
-            sl_price = self._round_price_to_point(float(stop_loss), float(point), digits)
+            sl_price = self._round_price_to_point(
+                float(stop_loss), float(point), digits)
             if order_type_upper == "buy" and sl_price >= entry_price:
                 sl_price = self._round_price_to_point(
-                    entry_price - max(min_distance, abs(sl_price - entry_price)),
+                    entry_price - max(min_distance,
+                                      abs(sl_price - entry_price)),
                     float(point),
                     digits,
                 )
             if order_type_upper == "sell" and sl_price <= entry_price:
                 sl_price = self._round_price_to_point(
-                    entry_price + max(min_distance, abs(sl_price - entry_price)),
+                    entry_price + max(min_distance,
+                                      abs(sl_price - entry_price)),
                     float(point),
                     digits,
                 )
@@ -405,16 +464,19 @@ class MT5Client:
                 )
 
         if take_profit is not None and take_profit > 0:
-            tp_price = self._round_price_to_point(float(take_profit), float(point), digits)
+            tp_price = self._round_price_to_point(
+                float(take_profit), float(point), digits)
             if order_type_upper == "buy" and tp_price <= entry_price:
                 tp_price = self._round_price_to_point(
-                    entry_price + max(min_distance, abs(tp_price - entry_price)),
+                    entry_price + max(min_distance,
+                                      abs(tp_price - entry_price)),
                     float(point),
                     digits,
                 )
             if order_type_upper == "sell" and tp_price >= entry_price:
                 tp_price = self._round_price_to_point(
-                    entry_price - max(min_distance, abs(tp_price - entry_price)),
+                    entry_price - max(min_distance,
+                                      abs(tp_price - entry_price)),
                     float(point),
                     digits,
                 )
@@ -444,7 +506,8 @@ class MT5Client:
 
         logger.info("MT5 order request=%s", request)
         result = mt5_module.order_send(request)
-        logger.info("MT5 order response=%s", getattr(result, "__dict__", result))
+        logger.info("MT5 order response=%s",
+                    getattr(result, "__dict__", result))
         if result is None:
             raise RuntimeError("MT5 order_send returned no result")
 
@@ -452,11 +515,14 @@ class MT5Client:
             raise RuntimeError(self._mt5_error_message(result))
 
         # Try multiple fields for order ID (ticket, deal, order)
-        ticket = getattr(result, "ticket", None) or getattr(result, "deal", None) or getattr(result, "order", None)
+        ticket = getattr(result, "ticket", None) or getattr(
+            result, "deal", None) or getattr(result, "order", None)
         if ticket is None:
-            raise RuntimeError("MT5 order accepted but no ticket/deal/order ID found")
+            raise RuntimeError(
+                "MT5 order accepted but no ticket/deal/order ID found")
 
-        position_id = getattr(result, "position", None) or getattr(result, "position_id", None)
+        position_id = getattr(result, "position", None) or getattr(
+            result, "position_id", None)
 
         # After order_send returns, the terminal may need a short moment to register the position.
         # Poll `positions_get` and `history_deals_get` for a few seconds to locate the resulting position/deal.
@@ -487,20 +553,23 @@ class MT5Client:
         if position is None and hasattr(mt5_module, "history_deals_get"):
             now_ts = int(time.time())
             try:
-                deals: list[Any] = mt5_module.history_deals_get(0, now_ts, 20) or []
+                deals: list[Any] = mt5_module.history_deals_get(
+                    0, now_ts, 20) or []
                 for d in deals:
                     if (
                         getattr(d, "order", None) == ticket
                         or getattr(d, "deal", None) == ticket
                         or (position_id is not None and getattr(d, "position_id", None) == position_id)
                     ):
-                        position_id = position_id or getattr(d, "position_id", None)
+                        position_id = position_id or getattr(
+                            d, "position_id", None)
                         position = self._verify_position(
                             int(ticket),
                             symbol,
                             entry_price=entry_price,
                             point=point,
-                            position_id=int(position_id) if position_id else None,
+                            position_id=int(
+                                position_id) if position_id else None,
                         )
                         break
             except Exception:
@@ -524,10 +593,12 @@ class MT5Client:
             return
 
         if not hasattr(mt5, "object_create"):
-            logger.warning("MT5 chart object API unavailable in installed MetaTrader5 package.")
+            logger.warning(
+                "MT5 chart object API unavailable in installed MetaTrader5 package.")
             return
 
-        logger.info("MT5 analysis drawing is not available in this runtime environment.")
+        logger.info(
+            "MT5 analysis drawing is not available in this runtime environment.")
 
     def modify_position(self, position_id: int, stop_loss: float | None = None, take_profit: float | None = None) -> dict[str, Any]:
         """Modify SL/TP on an existing position."""
@@ -547,7 +618,8 @@ class MT5Client:
         }
         result = mt5_module.order_send(request)
         if result is None or result.retcode != mt5_module.TRADE_RETCODE_DONE:
-            raise RuntimeError(f"MT5 position modification failed: {self._mt5_error_message(result)}")
+            raise RuntimeError(
+                f"MT5 position modification failed: {self._mt5_error_message(result)}")
         return {"status": "modified", "position_id": position_id, "sl": request["sl"], "tp": request["tp"]}
 
     def close_position(self, position_id: int, volume: float | None = None) -> dict[str, Any]:
@@ -560,7 +632,8 @@ class MT5Client:
         position = positions[0]
         tick = mt5_module.symbol_info_tick(position.symbol)
         if tick is None:
-            raise RuntimeError(f"MT5 could not fetch tick data for {position.symbol}")
+            raise RuntimeError(
+                f"MT5 could not fetch tick data for {position.symbol}")
 
         close_request: dict[str, Any] = {
             "action": mt5_module.TRADE_ACTION_DEAL,
@@ -569,7 +642,7 @@ class MT5Client:
             "type": mt5_module.ORDER_TYPE_SELL if position.type == mt5_module.ORDER_TYPE_BUY else mt5_module.ORDER_TYPE_BUY,
             "price": tick.ask if position.type == mt5_module.ORDER_TYPE_BUY else tick.bid,
             "deviation": 20,
-            "magic": 100000,
+            "magic": 123456,
             "comment": "bot-close",
             "type_time": mt5_module.ORDER_TIME_GTC,
             "type_filling": mt5_module.ORDER_FILLING_IOC,
@@ -578,7 +651,8 @@ class MT5Client:
         if result is None:
             raise RuntimeError("MT5 position close returned no result")
         if result.retcode != mt5_module.TRADE_RETCODE_DONE:
-            raise RuntimeError(f"MT5 position close failed with code {result.retcode}")
+            raise RuntimeError(
+                f"MT5 position close failed with code {result.retcode}")
         return {"status": "closed", "position_id": str(position_id)}
 
     def get_open_positions(self, bot_only: bool = False) -> list[dict[str, Any]]:
@@ -598,7 +672,8 @@ class MT5Client:
             comment = str(getattr(pos, "comment", "") or "")
             score_match = re.search(r"score:(\d+(?:\.\d+)?)", comment)
             score = float(score_match.group(1)) if score_match else 0.0
-            pnl_pct = (pos.profit / (pos.price_open * pos.volume * 100000)) * 100 if pos.price_open and pos.volume else 0.0
+            pnl_pct = (pos.profit / (pos.price_open * pos.volume * 100000)
+                       ) * 100 if pos.price_open and pos.volume else 0.0
             result.append({
                 "ticket": pos.ticket,
                 "symbol": pos.symbol,

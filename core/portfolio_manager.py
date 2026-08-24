@@ -15,8 +15,10 @@ class PortfolioManager:
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
         self.config = config or {}
-        self.trading_pairs = self.config.get("TRADING_PAIRS", settings.trading_pairs)
-        self.pair_states = {symbol: PairState(symbol) for symbol in self.trading_pairs}
+        self.trading_pairs = self.config.get(
+            "TRADING_PAIRS", settings.trading_pairs)
+        self.pair_states = {symbol: PairState(
+            symbol) for symbol in self.trading_pairs}
         self.total_open_positions = 0
         self.global_daily_pnl = 0.0
         self.global_drawdown = 0.0
@@ -24,7 +26,8 @@ class PortfolioManager:
         self.position_limit_hit_time: datetime | None = None
         self.override_mode_active = False
         self.override_positions_taken = 0
-        self._clock = self.config.get("clock", lambda: datetime.now(timezone.utc))
+        self._clock = self.config.get(
+            "clock", lambda: datetime.now(timezone.utc))
 
     def get_pair_state(self, symbol: str) -> PairState:
         """Return the state object for the requested symbol."""
@@ -56,7 +59,8 @@ class PortfolioManager:
         direction = direction.lower()
         pair_state = self.get_pair_state(symbol)
         pair_count = len(pair_state.open_positions)
-        tracked_total = max(self.total_open_positions, self.get_total_positions())
+        tracked_total = max(self.total_open_positions,
+                            self.get_total_positions())
 
         # Preserve the old bull/bear dollar-risk API for existing callers.
         if direction in {"bull", "bear"}:
@@ -76,9 +80,11 @@ class PortfolioManager:
         if tracked_total >= settings.max_total_positions:
             if self.position_limit_hit_time is None:
                 self.position_limit_hit_time = self._now()
-                logger.info("Position limit reached (%s). Starting recovery timer.", settings.max_total_positions)
+                logger.info(
+                    "Position limit reached (%s). Starting recovery timer.", settings.max_total_positions)
 
-            elapsed_hours = (self._now() - self.position_limit_hit_time).total_seconds() / 3600.0
+            elapsed_hours = (
+                self._now() - self.position_limit_hit_time).total_seconds() / 3600.0
             if elapsed_hours < settings.wait_hours_before_override:
                 remaining = settings.wait_hours_before_override - elapsed_hours
                 return False, f"Position limit reached. Waiting {remaining:.1f}h before override"
@@ -86,7 +92,8 @@ class PortfolioManager:
             if not self.override_mode_active:
                 self.override_mode_active = True
                 self.override_positions_taken = 0
-                logger.info("Position-limit override mode activated after %.1fh.", elapsed_hours)
+                logger.info(
+                    "Position-limit override mode activated after %.1fh.", elapsed_hours)
 
             if self.override_positions_taken >= settings.max_override_positions:
                 return False, f"Max override positions ({settings.max_override_positions}) taken"
@@ -101,8 +108,8 @@ class PortfolioManager:
         if pair_count:
             if score <= pair_state.current_best_score:
                 return False, f"Score {score:g} <= current best {pair_state.current_best_score:g}"
-            if score < settings.min_stacking_score:
-                return False, f"Score {score:g} < {settings.min_stacking_score} threshold for stacking"
+            if score < 70:
+                return False, f"Score {score:g} < 70 threshold for stacking"
         elif score < settings.min_score:
             return False, f"Score {score:g} < {settings.min_score} threshold"
 
@@ -138,17 +145,28 @@ class PortfolioManager:
         }
         if self.position_limit_hit_time is not None:
             result["limit_hit_time"] = self.position_limit_hit_time.isoformat()
-            result["elapsed_hours"] = (self._now() - self.position_limit_hit_time).total_seconds() / 3600.0
+            result["elapsed_hours"] = (
+                self._now() - self.position_limit_hit_time).total_seconds() / 3600.0
         return result
 
     def get_dynamic_risk(self, score: float) -> float:
-        """Return the absolute risk fraction for a signal quality score."""
+        """Return the legacy absolute risk fraction for a signal quality score."""
         if score >= 85:
             return 0.020
         if score >= 75:
             return 0.0095
         if score >= 65:
             return 0.008
+        return 0.0
+
+    def get_quality_multiplier(self, score: float) -> float:
+        """Return the sizing multiplier associated with signal quality."""
+        if score >= 85:
+            return 1.5
+        if score >= 75:
+            return 1.25
+        if score >= 70:
+            return 1.0
         return 0.0
 
     def update_daily_pnl(self, pnl: float) -> None:
@@ -174,7 +192,8 @@ class PortfolioManager:
 
     def update_position_state(self, symbol: str, position: dict[str, Any]) -> None:
         """Update pair state with a new position."""
-        self.add_position_state(symbol, position, float(position.get("score", 0.0) or 0.0))
+        self.add_position_state(symbol, position, float(
+            position.get("score", 0.0) or 0.0))
 
     def add_position_state(self, symbol: str, position: dict[str, Any], score: float) -> None:
         """Add a scored position to pair state exactly once."""
@@ -185,23 +204,25 @@ class PortfolioManager:
         position["score"] = float(score)
         pair_state.add_position(position)
         self.total_open_positions += 1
-        logger.info("Position added for %s: score=%.1f, total=%s", symbol, score, self.total_open_positions)
+        logger.info("Position added for %s: score=%.1f, total=%s",
+                    symbol, score, self.total_open_positions)
 
     def remove_position_state(self, symbol: str, position_id: int) -> None:
         """Remove position from pair state."""
         pair_state = self.get_pair_state(symbol)
         pair_state.remove_position(position_id)
         self.total_open_positions = max(0, self.total_open_positions - 1)
-        logger.info(f"Position removed for {symbol}: total={self.total_open_positions}")
+        logger.info(
+            f"Position removed for {symbol}: total={self.total_open_positions}")
 
     def check_global_limits(self) -> tuple[bool, str]:
         """Check account-level trading limits."""
         if self.global_drawdown >= settings.global_drawdown_limit:
             return False, f"Global drawdown limit reached: {self.global_drawdown:.2%} >= {settings.global_drawdown_limit:.2%}"
 
-        daily_loss_limit_amount = float(settings.account_balance) * settings.global_daily_loss_limit
+        daily_loss_limit_amount = float(
+            settings.account_balance) * settings.global_daily_loss_limit
         if self.global_daily_pnl <= -daily_loss_limit_amount:
             return False, f"Global daily loss limit reached: ${self.global_daily_pnl:.2f} <= -${daily_loss_limit_amount:.2f}"
 
         return True, "Within global limits"
-

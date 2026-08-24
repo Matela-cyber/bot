@@ -35,6 +35,8 @@ from strategies.trend_strategy import TrendStrategy
 from structure.candlestick_validator import CandlestickValidator
 from structure.swing_detector import detect_swings
 from utils.logger import get_logger
+from utils.cycle_summary import CycleSummary
+from utils.notification_compressor import NotificationCompressor
 
 logger = get_logger("bot")
 
@@ -54,6 +56,8 @@ class AdaptiveTradingBot:
         )
         self.telegram_sender = TelegramSender(
             settings.telegram_token, settings.telegram_chat_id)
+        self.notification_compressor = NotificationCompressor(
+            self.telegram_sender)
         self.volatility_detector = VolatilityDetector(self.mt5_client)
         self.weekend_filter = WeekendFilter()
         self.liquidity_filter = LowLiquidityFilter()
@@ -83,6 +87,7 @@ class AdaptiveTradingBot:
         self._last_reconciled_positions: set[int] = set()
         self._partial_exit_tickets: set[int] = set()
         self.last_session: str | None = None
+        self.summary: CycleSummary | None = None
 
         self.cycle_types = {
             "standard": 900,
@@ -323,6 +328,7 @@ class AdaptiveTradingBot:
         current_time = datetime.now(pytz.UTC)
         self._reset_daily_stats(current_time)
         self._sync_positions()
+        self.summary = CycleSummary(current_time, len(self.trading_pairs))
 
         if self.weekend_filter.should_close_all_positions(current_time):
             logger.info(
@@ -393,6 +399,16 @@ class AdaptiveTradingBot:
                     signals_generated += 1
                 if result.get("trade_executed"):
                     trades_executed += 1
+                self.summary.signals_detected += int(
+                    bool(result.get("signal_generated")))
+                self.summary.signals_accepted += int(
+                    bool(result.get("trade_executed")))
+                self.summary.trades_opened += int(
+                    bool(result.get("trade_executed")))
+                self.summary.volatility_blocks += int(
+                    bool(result.get("volatility_blocked")))
+                if result.get("volatility_blocked"):
+                    self.summary.add_event(f"{symbol} volatility block")
             except Exception as exc:
                 report.add_error(f"Error processing {symbol}: {exc}")
 
@@ -400,6 +416,16 @@ class AdaptiveTradingBot:
         report.pairs_skipped = pairs_skipped
         report.signals_generated = signals_generated
         report.trades_executed = trades_executed
+        self.summary.pairs_processed = pairs_processed
+        self.summary.pairs_skipped = pairs_skipped
+        self.summary.open_positions = self.portfolio_manager.total_open_positions
+        self.summary.current_pnl = self.portfolio_manager.global_daily_pnl
+        self.summary.current_session = str(session["name"])
+        self.summary.risk_multiplier = float(session["risk_multiplier"])
+        logger.info("Cycle summary: %s", self.summary.get_compressed_log())
+        self.notification_compressor.send_compressed(
+            "cycle_summary", self.summary.get_summary_line()
+        )
 
         if settings.use_mt5_execution:
             try:
@@ -446,7 +472,8 @@ class AdaptiveTradingBot:
     ) -> dict[str, Any]:
         """Process one symbol across multiple timeframes, validate candlesticks, and score the trade."""
         result: dict[str, Any] = {"processed": False, "skipped": True,
-                                  "signal_generated": False, "trade_executed": False}
+                                  "signal_generated": False, "trade_executed": False,
+                                  "volatility_blocked": False}
 
         if symbol in self._unavailable_symbols:
             return result
@@ -459,8 +486,10 @@ class AdaptiveTradingBot:
             if not volatility_trade:
                 logger.info("%s: Trading blocked by volatility: %s",
                             symbol, volatility_reason)
+                result["volatility_blocked"] = True
                 try:
-                    self.telegram_sender.send(
+                    self.notification_compressor.send_compressed(
+                        "volatility_block",
                         f"⚠️ Volatility block for {symbol}: {volatility_reason}")
                 except Exception:
                     logger.warning(
@@ -850,6 +879,8 @@ class AdaptiveTradingBot:
                 "stop_loss": float(position.get("sl", stop_loss)),
                 "take_profit": float(position.get("tp", signal.get("take_profit", 0.0))),
                 "position_size": lots,
+                "score": int(scored["score"]),
+                "regime": str(regime["regime"]),
             })
 
             msg = (

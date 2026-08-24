@@ -18,7 +18,8 @@ def utc_now() -> datetime:
 class PatternEvent(Base):
     __tablename__ = "pattern_events"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    timestamp: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=utc_now)
+    timestamp: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=utc_now)
     timeframe: Mapped[str | None] = mapped_column(String(10))
     pattern_name: Mapped[str | None] = mapped_column(String(50))
     breakout_level: Mapped[float | None] = mapped_column(Float)
@@ -27,7 +28,8 @@ class PatternEvent(Base):
     candlestick_bonus: Mapped[bool] = mapped_column(default=False)
     candlestick_pattern: Mapped[str | None] = mapped_column(String(80))
     candlestick_priority: Mapped[str | None] = mapped_column(String(20))
-    candlestick_priority_bonus: Mapped[float] = mapped_column(Float, default=0.0)
+    candlestick_priority_bonus: Mapped[float] = mapped_column(
+        Float, default=0.0)
     final_score: Mapped[float | None] = mapped_column(Float)
     executed: Mapped[bool] = mapped_column(default=False)
     result: Mapped[str | None] = mapped_column(String(10))
@@ -36,8 +38,10 @@ class PatternEvent(Base):
 class Trade(Base):
     __tablename__ = "trades"
     trade_id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    symbol: Mapped[str] = mapped_column(String(10), nullable=False, default="EURUSD")
-    entry_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    symbol: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="EURUSD")
+    entry_time: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True))
     exit_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     direction: Mapped[str | None] = mapped_column(String(4))
     entry_price: Mapped[float | None] = mapped_column(Float)
@@ -49,6 +53,8 @@ class Trade(Base):
     pnl_percentage: Mapped[float | None] = mapped_column(Float)
     position_size: Mapped[float | None] = mapped_column(Float)
     pattern_name: Mapped[str | None] = mapped_column(String(50))
+    score: Mapped[int] = mapped_column(Integer, default=0)
+    regime: Mapped[str | None] = mapped_column(String(20))
     falcon_scores: Mapped[str | None] = mapped_column(Text)
     mae_pips: Mapped[int] = mapped_column(Integer, default=0)
     mfe_pips: Mapped[int] = mapped_column(Integer, default=0)
@@ -63,7 +69,8 @@ class Trade(Base):
 class FailedOrder(Base):
     __tablename__ = "failed_orders"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    timestamp: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=utc_now)
+    timestamp: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=utc_now)
     symbol: Mapped[str] = mapped_column(String(10), nullable=False)
     order_type: Mapped[str | None] = mapped_column(String(10))
     volume: Mapped[float | None] = mapped_column(Float)

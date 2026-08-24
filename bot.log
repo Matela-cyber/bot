@@ -1406,3 +1406,190 @@ AttributeError: 'NoneType' object has no attribute 'is_weekend'
    Trades: 0
    Checks: 1/1 passed
    Successes: 2
+2026-08-24 09:38:38,186 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:38:38,190 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:38:38.181033+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:39:08,197 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:39:08,201 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:39:08.191891+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:39:38,203 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:39:38,204 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:39:38.202359+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:40:08,212 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:40:08,217 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:40:08.205808+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:40:38,220 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:40:38,222 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:40:38.218827+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:41:08,230 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:41:08,234 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:41:08.223215+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:41:38,240 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:41:38,242 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:41:38.236055+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:42:08,250 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:42:08,254 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:42:08.243734+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:42:38,259 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:42:38,261 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:42:38.256224+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:43:08,264 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:43:08,267 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:43:08.261998+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:43:38,275 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:43:38,279 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:43:38.267976+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:44:08,284 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:44:08,286 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:44:08.281460+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:44:38,289 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:44:38,291 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:44:38.286785+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:45:08,295 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:45:08,297 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:45:08.292778+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:45:38,301 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:45:38,303 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:45:38.298710+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:46:08,307 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:46:08,309 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:46:08.304039+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:46:38,314 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:46:38,316 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:46:38.310474+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:47:08,320 | INFO | bot | Reconciled 1 bot-owned open position(s)
+2026-08-24 09:47:08,322 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:47:08.317689+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 2
+2026-08-24 09:47:38,457 | WARNING | bot | Could not persist closed position 364091540: (sqlite3.OperationalError) no such column: trades.symbol
+[SQL: SELECT trades.trade_id AS trades_trade_id, trades.symbol AS trades_symbol, trades.entry_time AS trades_entry_time, trades.exit_time AS trades_exit_time, trades.direction AS trades_direction, trades.entry_price AS trades_entry_price, trades.stop_loss AS trades_stop_loss, trades.take_profit AS trades_take_profit, trades.exit_price AS trades_exit_price, trades.pnl_pips AS trades_pnl_pips, trades.pnl_amount AS trades_pnl_amount, trades.pnl_percentage AS trades_pnl_percentage, trades.position_size AS trades_position_size, trades.pattern_name AS trades_pattern_name, trades.falcon_scores AS trades_falcon_scores, trades.mae_pips AS trades_mae_pips, trades.mfe_pips AS trades_mfe_pips, trades.hold_time_minutes AS trades_hold_time_minutes, trades.exit_reason AS trades_exit_reason, trades.rl_action_taken AS trades_rl_action_taken, trades.reward AS trades_reward, trades.falcon_overall_score AS trades_falcon_overall_score, trades.falcon_report AS trades_falcon_report 
+FROM trades 
+WHERE trades.trade_id = ?]
+[parameters: ('364091540',)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-08-24 09:47:38,459 | INFO | bot | Reconciled 0 bot-owned open position(s)
+2026-08-24 09:47:38,460 | INFO | bot | CYCLE REPORT: monitoring
+   Time: 2026-08-24 07:47:38.323218+00:00
+   Pairs: 0 processed, 0 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 1/1 passed
+   Successes: 1
+2026-08-24 09:48:08,464 | INFO | bot | Reconciled 0 bot-owned open position(s)
+2026-08-24 09:48:15,751 | INFO | bot | EURUSD: 4H=mixed | 1H=trending | 15M=ranging
+2026-08-24 09:48:15,751 | INFO | bot | EURUSD: Mixed regime detected, skipping
+2026-08-24 09:48:24,306 | INFO | bot | GBPUSD: 4H=trending | 1H=trending | 15M=mixed
+2026-08-24 09:48:24,306 | INFO | bot | GBPUSD: Mixed regime detected, skipping
+2026-08-24 09:48:32,757 | INFO | bot | USDJPY: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-24 09:48:32,757 | INFO | bot | USDJPY: Mixed regime detected, skipping
+2026-08-24 09:48:40,961 | INFO | bot | AUDUSD: 4H=trending | 1H=mixed | 15M=mixed
+2026-08-24 09:48:40,961 | INFO | bot | AUDUSD: Mixed regime detected, skipping
+2026-08-24 09:48:49,039 | INFO | bot | NZDUSD: 4H=trending | 1H=trending | 15M=mixed
+2026-08-24 09:48:49,040 | INFO | bot | NZDUSD: Mixed regime detected, skipping
+2026-08-24 09:48:57,053 | INFO | bot | USDCAD: 4H=trending | 1H=mixed | 15M=ranging
+2026-08-24 09:48:57,053 | INFO | bot | USDCAD: Mixed regime detected, skipping
+2026-08-24 09:49:05,324 | INFO | bot | USDCHF: 4H=trending | 1H=ranging | 15M=mixed
+2026-08-24 09:49:05,325 | INFO | bot | USDCHF: Mixed regime detected, skipping
+2026-08-24 09:49:13,897 | INFO | bot | EURGBP: 4H=mixed | 1H=trending | 15M=trending
+2026-08-24 09:49:13,898 | INFO | bot | EURGBP: Mixed regime detected, skipping
+2026-08-24 09:49:22,689 | INFO | bot | EURAUD: 4H=mixed | 1H=mixed | 15M=mixed
+2026-08-24 09:49:22,690 | INFO | bot | EURAUD: Mixed regime detected, skipping
+2026-08-24 09:49:30,914 | INFO | bot | GBPJPY: 4H=trending | 1H=trending | 15M=mixed
+2026-08-24 09:49:30,915 | INFO | bot | GBPJPY: Mixed regime detected, skipping
+2026-08-24 09:49:32,849 | INFO | bot | CYCLE REPORT: micro
+   Time: 2026-08-24 07:48:08.461532+00:00
+   Pairs: 10 processed, 10 skipped
+   Signals: 0
+   Trades: 0
+   Checks: 3/3 passed
+   Successes: 2
+2026-08-24 16:21:11,564 | INFO | bot | Bot starting...

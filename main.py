@@ -87,6 +87,7 @@ class AdaptiveTradingBot:
         self._last_reconciled_positions: set[int] = set()
         self._partial_exit_tickets: set[int] = set()
         self.last_session: str | None = None
+        self._last_main_cycle_slot: datetime | None = None
         self.summary: CycleSummary | None = None
 
         self.cycle_types = {
@@ -134,10 +135,11 @@ class AdaptiveTradingBot:
 
         while True:
             try:
-                cycle_type = self._determine_cycle_type()
+                cycle_type = self._next_scheduled_cycle()
                 report = self.run_cycle(cycle_type)
                 self.diagnostic_reports.append(report)
-                logger.info(report.summary())
+                if cycle_type != "micro":
+                    logger.info(report.summary())
 
                 if report.errors:
                     self.error_count += 1
@@ -152,7 +154,7 @@ class AdaptiveTradingBot:
                 else:
                     self.error_count = 0
 
-                sleep_time = self.cycle_types.get(cycle_type, 900)
+                sleep_time = 30
                 self.last_cycle_time = datetime.now(pytz.UTC)
                 time.sleep(sleep_time)
 
@@ -185,6 +187,18 @@ class AdaptiveTradingBot:
             return "micro"
         if now.minute % 15 == 0:
             return "standard"
+        return "micro"
+
+    def _next_scheduled_cycle(self) -> str:
+        """Prioritize one main scan per 15-minute slot between quiet micro ticks."""
+        now = datetime.now(pytz.UTC)
+        slot = now.replace(minute=(now.minute // 15) *
+                           15, second=0, microsecond=0)
+        if self._last_main_cycle_slot != slot:
+            self._last_main_cycle_slot = slot
+            return "standard"
+        if self._has_emergency_positions():
+            return "emergency"
         return "micro"
 
     def _has_emergency_positions(self) -> bool:
@@ -268,7 +282,7 @@ class AdaptiveTradingBot:
         self.last_health_check = datetime.now(pytz.UTC)
         return report
 
-    def _sync_positions(self) -> None:
+    def _sync_positions(self, quiet: bool = False) -> None:
         """Reconcile bot-owned MT5 positions into in-memory portfolio state."""
         if not settings.use_mt5_execution:
             return
@@ -318,16 +332,19 @@ class AdaptiveTradingBot:
                 pos for pos in positions if pos["symbol"] == symbol]
             pair_state.update_best_score()
         self._last_reconciled_positions = set(self.open_positions)
-        logger.info("Reconciled %s bot-owned open position(s)", len(positions))
+        if not quiet:
+            logger.info("Reconciled %s bot-owned open position(s)",
+                        len(positions))
 
     def run_cycle(self, cycle_type: str) -> CycleReport:
         """Execute a full trading cycle and return a diagnostic report."""
         report = CycleReport(datetime.now(pytz.UTC), cycle_type)
-        report.add_success(f"Starting {cycle_type} cycle")
+        if cycle_type != "micro":
+            report.add_success(f"Starting {cycle_type} cycle")
 
         current_time = datetime.now(pytz.UTC)
         self._reset_daily_stats(current_time)
-        self._sync_positions()
+        self._sync_positions(quiet=cycle_type == "micro")
         self.summary = CycleSummary(current_time, len(self.trading_pairs))
 
         if self.weekend_filter.should_close_all_positions(current_time):
@@ -352,7 +369,11 @@ class AdaptiveTradingBot:
             except Exception:
                 logger.warning("Telegram session-change alert failed")
 
-        if cycle_type in {"monitoring", "emergency"}:
+        if cycle_type == "micro":
+            self._monitor_positions(report, quiet=True)
+            return report
+
+        if cycle_type == "emergency":
             self._monitor_positions(report)
             return report
 
@@ -658,7 +679,7 @@ class AdaptiveTradingBot:
             logger.error("%s: Error - %s", symbol, exc)
             return result
 
-    def _monitor_positions(self, report: CycleReport) -> None:
+    def _monitor_positions(self, report: CycleReport, quiet: bool = False) -> None:
         """Monitor live open positions and update diagnostic report."""
         try:
             positions = self.mt5_client.get_open_positions(bot_only=True)
@@ -667,8 +688,9 @@ class AdaptiveTradingBot:
                 report.add_check("Position Monitoring", True,
                                  f"Monitoring {len(positions)} positions")
                 for pos in positions:
-                    report.add_success(
-                        f"Position {pos['ticket']}: PnL=${pos.get('pnl', 0.0):.2f}")
+                    if not quiet:
+                        report.add_success(
+                            f"Position {pos['ticket']}: PnL=${pos.get('pnl', 0.0):.2f}")
                     management = self.position_manager.manage({
                         "ticket": pos["ticket"],
                         "direction": pos["type"],
@@ -688,20 +710,23 @@ class AdaptiveTradingBot:
                     if action in {"breakeven", "trail"}:
                         self.mt5_client.modify_position(
                             pos["ticket"], stop_loss=float(management["new_sl"]))
-                        report.add_success(
-                            f"Position {pos['ticket']}: {action} applied")
+                        if not quiet:
+                            report.add_success(
+                                f"Position {pos['ticket']}: {action} applied")
                     elif action == "partial_exit" and pos["ticket"] not in self._partial_exit_tickets:
                         volume = float(pos["volume"]) * \
                             float(management["close_percent"])
                         self.mt5_client.close_position(
                             pos["ticket"], volume=volume)
                         self._partial_exit_tickets.add(pos["ticket"])
-                        report.add_success(
-                            f"Position {pos['ticket']}: partial exit applied")
+                        if not quiet:
+                            report.add_success(
+                                f"Position {pos['ticket']}: partial exit applied")
                     elif action == "close":
                         self.mt5_client.close_position(pos["ticket"])
-                        report.add_success(
-                            f"Position {pos['ticket']}: closed by manager")
+                        if not quiet:
+                            report.add_success(
+                                f"Position {pos['ticket']}: closed by manager")
             else:
                 report.add_check("Position Monitoring",
                                  True, "No open positions")

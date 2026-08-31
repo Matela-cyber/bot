@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from config import LOCAL_TIMEZONE, settings
 
@@ -16,16 +16,25 @@ class WeekendFilter:
         local_time = current_time.astimezone(LOCAL_TIMEZONE)
         return local_time.weekday() in (5, 6)
 
+    def _friday_closeout_deadline(self, local_time: datetime) -> datetime:
+        """Return the Friday cutoff at which the bot should close before the weekend."""
+        friday_close = local_time.replace(
+            hour=settings.market_close_friday,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
+        return friday_close - timedelta(minutes=30)
+
     def is_market_open(self, current_time: datetime) -> tuple[bool, str]:
         """Return whether Forex market trading hours are currently open in local time."""
         local_time = current_time.astimezone(LOCAL_TIMEZONE)
         weekday = local_time.weekday()
-        hour = local_time.hour
 
         if weekday >= 5:
             return False, "weekend"
 
-        if weekday == 4 and hour >= settings.friday_cutoff_hour:
+        if weekday == 4 and local_time >= self._friday_closeout_deadline(local_time):
             return False, "market_closes_friday"
 
         return True, "market_open"
@@ -40,9 +49,11 @@ class WeekendFilter:
         return True, "trading_allowed"
 
     def should_close_all_positions(self, current_time: datetime) -> bool:
-        """Return whether bot-owned positions must be closed at Saturday 00:00 local."""
+        """Return whether bot-owned positions must be closed before the weekend begins."""
         local_time = current_time.astimezone(LOCAL_TIMEZONE)
-        return local_time.weekday() == 5 and local_time.hour >= 0
+        if local_time.weekday() == 4:
+            return local_time >= self._friday_closeout_deadline(local_time)
+        return local_time.weekday() == 5
 
     def get_trading_hours(self) -> dict[str, object]:
         """Return configured Forex market hours expressed in local time."""

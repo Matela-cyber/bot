@@ -1,154 +1,165 @@
+"""Pre-trade market and account filters."""
+
 from __future__ import annotations
 
 import logging
-from datetime import datetime
-from typing import Any, Protocol
+from datetime import datetime, timezone
+from typing import Any, Optional
+from zoneinfo import ZoneInfo
 
-import pytz
+import numpy as np
+import pandas as pd
 
-from config import settings
-from filter.liquidity_filter import LowLiquidityFilter
-from filter.weekend_filter import WeekendFilter
-
-logger = logging.getLogger(__name__)
-
-
-class VolatilitySource(Protocol):
-    """Interface required by TradingFilter for volatility gating."""
-
-    def should_trade(self, symbol: str) -> tuple[bool, str, float]:
-        """Return entry permission, reason, and risk multiplier."""
-        ...
+from indicators.atr import calculate_atr
+from filter.market_safety import (
+    AdaptiveVolatilityFilter,
+    LowLiquidityFilter,
+    MarketShockFilter,
+    WeekendFilter,
+)
+from filter.holidays import HolidayFilter
+from utils.helpers import get_session_name
 
 
 class TradingFilter:
-    """Combined filter that prevents trading during unsafe periods."""
+    ATR_PERIOD = 14
+    DEFAULT_MIN_ATR = 0.0002
+    DEFAULT_MAX_ATR = 0.003
+    DEFAULT_MAX_SPREAD = 0.0003
 
-    def __init__(
+    def __init__(self, config: Any, mt5_client: Any | None = None) -> None:
+        if config is None:
+            raise ValueError("config is required")
+        self.config = config
+        self.mt5_client = mt5_client
+        self.logger = logging.getLogger(__name__)
+
+        self.weekend_filter = WeekendFilter(config)
+        self.liquidity_filter = LowLiquidityFilter(config)
+        self.adaptive_volatility = AdaptiveVolatilityFilter(config)
+        self.holiday_filter = HolidayFilter(config)
+        self.shock_filter = MarketShockFilter(config)
+
+        self.spread_filter_enabled = getattr(
+            config, 'spread_filter_enabled', True)
+        self.max_spread = getattr(
+            config, 'max_spread', self.DEFAULT_MAX_SPREAD)
+
+    def should_trade(
         self,
-        volatility_detector: VolatilitySource,
-        weekend_filter: WeekendFilter,
-        liquidity_filter: LowLiquidityFilter | None = None,
-    ) -> None:
-        self.volatility_detector = volatility_detector
-        self.weekend_filter = weekend_filter
-        self.liquidity_filter = liquidity_filter or LowLiquidityFilter()
+        data: pd.DataFrame,
+        current_time: datetime | None = None,
+        spread: float | None = None,
+        include_spread: bool = True,
+    ) -> bool:
+        try:
+            evaluation_time = current_time or self._current_time()
 
-    def should_trade(self, current_time: datetime, symbol: str | None = None) -> dict[str, Any]:
-        """Return combined trading permission, risk multiplier, and reason."""
-        utc_time = current_time.astimezone(pytz.UTC)
-        result: dict[str, Any] = {
-            "trade": True,
-            "risk_multiplier": 1.0,
-            "reason": "ready",
-            "checks_passed": 0,
-            "details": {
-                "weekend": False,
-                "market_open": False,
-                "volatility": {},
-            },
-        }
+            checks = [
+                self.check_volatility(data, evaluation_time),
+                self.check_session(evaluation_time),
+                self.holiday_filter.should_trade(evaluation_time),
+                self.shock_filter.should_trade(data),
+                self.adaptive_volatility.should_trade(data),
+            ]
 
-        weekend = self.weekend_filter.is_weekend(utc_time)
-        result["details"]["weekend"] = weekend
-        weekend_allowed, weekend_reason = self.weekend_filter.should_trade(
-            utc_time)
-        if not weekend_allowed:
-            result.update({
-                "trade": False,
-                "risk_multiplier": 0.0,
-                "reason": weekend_reason,
-                "checks_passed": 0,
-            })
-            logger.info(
-                "TradingFilter: Blocked by weekend schedule (%s)", weekend_reason)
-            return result
+            if include_spread and self.spread_filter_enabled:
+                checks.append(self.check_spread(spread))
 
-        if weekend and not settings.weekend_allow_trading:
-            result.update(
-                {
-                    "trade": False,
-                    "risk_multiplier": 0.0,
-                    "reason": "weekend_trading_blocked",
-                    "checks_passed": 0,
-                }
-            )
-            logger.info("TradingFilter: Blocked due to weekend")
-            return result
+            return all(checks)
 
-        market_open, market_reason = self.weekend_filter.is_market_open(
-            utc_time)
-        result["details"]["market_open"] = market_open
-        if not market_open:
-            result.update(
-                {
-                    "trade": False,
-                    "risk_multiplier": 0.0,
-                    "reason": market_reason,
-                    "checks_passed": 1 if not weekend else 0,
-                }
-            )
-            logger.info(
-                "TradingFilter: Blocked due to market hours (%s)", market_reason)
-            return result
+        except Exception as exc:
+            self.logger.exception("Trading filter evaluation failed: %s", exc)
+            return False
 
-        volatility_reason = "volatility_check_deferred"
-        volatility_multiplier = 1.0
-        if symbol is not None:
-            volatility_trade, volatility_reason, volatility_multiplier = self.volatility_detector.should_trade(
-                symbol)
-            result["details"]["volatility"] = {
-                "trade": volatility_trade,
-                "reason": volatility_reason,
-                "risk_multiplier": volatility_multiplier,
-            }
-            if not volatility_trade:
-                result.update(
-                    {
-                        "trade": False,
-                        "risk_multiplier": 0.0,
-                        "reason": volatility_reason,
-                        "checks_passed": 2,
-                    }
-                )
-                logger.info(
-                    "TradingFilter: Blocked by volatility (%s)", volatility_reason)
-                return result
-        else:
-            result["details"]["volatility"] = {
-                "trade": True, "reason": volatility_reason, "risk_multiplier": 1.0}
+    def check_volatility(self, data: pd.DataFrame, current_time: datetime | None = None) -> bool:
+        if data.empty:
+            return False
 
-        result["checks_passed"] += 1
-        liquidity_trade, liquidity_reason = self.liquidity_filter.should_trade(
-            utc_time)
-        liquidity_multiplier = self.liquidity_filter.get_risk_multiplier(
-            utc_time)
-        result["details"]["liquidity"] = {
-            "trade": liquidity_trade,
-            "reason": liquidity_reason,
-            "risk_multiplier": liquidity_multiplier,
-        }
+        current = current_time or self._current_time()
 
-        if not liquidity_trade:
-            result.update(
-                {
-                    "trade": False,
-                    "risk_multiplier": 0.0,
-                    "reason": liquidity_reason,
-                    "checks_passed": 3,
-                }
-            )
-            logger.info(
-                "TradingFilter: Blocked due to liquidity (%s)", liquidity_reason)
-            return result
+        if not self.weekend_filter.should_trade(current):
+            return False
 
-        result["risk_multiplier"] = min(
-            volatility_multiplier, liquidity_multiplier)
-        result["reason"] = f"{volatility_reason}; {liquidity_reason}"
-        result["checks_passed"] = 3
-        logger.info(
-            "TradingFilter: Trading allowed with risk multiplier %.2f (%s)",
-            result["risk_multiplier"],
-            result["reason"],
-        )
-        return result
+        if not self.liquidity_filter.should_trade(current):
+            return False
+
+        atr = calculate_atr(data, period=self.ATR_PERIOD).iloc[-1]
+        if not np.isfinite(atr):
+            return False
+
+        minimum = float(getattr(self.config, "min_atr", self.DEFAULT_MIN_ATR))
+        maximum = float(getattr(self.config, "max_atr", self.DEFAULT_MAX_ATR))
+
+        if minimum < 0 or maximum < minimum:
+            raise ValueError("Invalid ATR bounds")
+
+        return minimum <= float(atr) <= maximum
+
+    def check_spread(self, spread: float | None = None) -> bool:
+        if not self.spread_filter_enabled:
+            return True
+
+        maximum = float(self.max_spread)
+
+        if spread is None:
+            spread = getattr(self.config, "current_spread",
+                             getattr(self.config, "spread", None))
+
+        if spread is None:
+            client = self.mt5_client or getattr(
+                self.config, "mt5_client", None)
+            symbol = getattr(self.config, "symbol", None)
+
+            if client is not None and symbol:
+                api = client.get_api() if hasattr(client, "get_api") else client
+                tick = api.symbol_info_tick(symbol)
+                if tick is not None:
+                    spread = float(tick.ask) - float(tick.bid)
+
+        if spread is None or not np.isfinite(float(spread)) or maximum < 0:
+            return False
+
+        return 0 <= float(spread) < maximum
+
+    def check_session(self, current_time: datetime | None = None) -> bool:
+        current = current_time or getattr(self.config, "current_time", None)
+
+        if current is None:
+            current = datetime.now(timezone.utc)
+
+        if not isinstance(current, datetime):
+            raise TypeError("current_time must be a datetime")
+
+        if current.tzinfo is None:
+            current = current.replace(tzinfo=timezone.utc)
+
+        local = current.astimezone(
+            ZoneInfo(getattr(self.config, "local_timezone", "Africa/Johannesburg")))
+
+        if local.weekday() >= 5:
+            return False
+
+        if local.weekday() == 4 and local.hour >= int(getattr(self.config, "friday_cutoff_hour", 17)):
+            return False
+
+        start = int(getattr(self.config, "low_liquidity_block_start_utc", 22))
+        end = int(getattr(self.config, "low_liquidity_block_end_utc", 2))
+
+        if getattr(self.config, "low_liquidity_filter_enabled", True):
+            hour = current.hour
+            blocked = hour >= start or hour < end if start > end else start <= hour < end
+            if blocked:
+                return False
+
+        return get_session_name(current) != "Closed"
+
+    def _current_time(self) -> datetime:
+        current = getattr(self.config, "current_time", None)
+        if current is None:
+            current = datetime.now(timezone.utc)
+
+        if not isinstance(current, datetime):
+            raise TypeError("current_time must be a datetime")
+
+        return current.replace(tzinfo=timezone.utc) if current.tzinfo is None else current

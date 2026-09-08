@@ -1,177 +1,90 @@
+"""Conservative position sizing and account-level risk controls."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass
+import logging
+import math
 from typing import Any
 
-from config import settings
-from execution.mt5_client import MT5Client
 
-MAX_CONCURRENT_POSITIONS = 2
-MAX_SAME_DIRECTION_POSITIONS = 2
-MAX_TOTAL_RISK_PERCENT = 0.03
-DAILY_LOSS_LIMIT = 0.03
-OVERALL_DRAWDOWN_LIMIT = 0.15
-CONTRACT_SIZE = 100000.0
-
-
-@dataclass
-class RiskAssessment:
-    """Structured outcome for a proposed trade plan."""
-
-    allowed: bool
-    reason: str
-    risk_amount: float
-    position_size: float
-    max_position_size: float
-    drawdown_fraction: float
-
-
-@dataclass
 class RiskManager:
-    account_balance: float
-    daily_loss: float = 0.0
-    consecutive_losses: int = 0
-    current_equity: float | None = None
-    peak_equity: float | None = None
+    MAX_RISK_PER_TRADE = 0.01
 
-    def get_open_positions(self, mt5_client: MT5Client) -> list[dict[str, Any]]:
-        try:
-            positions = mt5_client.get_open_positions(bot_only=True)
-        except TypeError:
-            positions = mt5_client.get_open_positions()
-        result: list[dict[str, Any]] = []
-        for pos in positions:
-            result.append(
-                {
-                    "ticket": pos["ticket"],
-                    "symbol": pos["symbol"],
-                    "direction": "bull" if pos["type"] == "buy" else "bear",
-                    "entry": float(pos.get("entry_price", 0.0) or 0.0),
-                    "sl": float(pos.get("sl", 0.0) or 0.0),
-                    "tp": float(pos.get("tp", 0.0) or 0.0),
-                    "current_price": float(pos.get("current_price", 0.0) or 0.0),
-                    "pnl": float(pos.get("pnl", 0.0) or 0.0),
-                    "pnl_percent": float(pos.get("pnl_percent", 0.0) or 0.0),
-                    "volume": float(pos.get("volume", 0.0) or 0.0),
-                }
-            )
-        return result
+    def __init__(self, config: Any) -> None:
+        if config is None:
+            raise ValueError("config is required")
+        self.config = config
+        self.logger = logging.getLogger(__name__)
+        self.starting_balance = float(
+            getattr(config, "account_balance", 1000.0))
+        if self.starting_balance <= 0:
+            raise ValueError("account balance must be positive")
+        self.current_balance = self.starting_balance
+        self.peak_balance = self.starting_balance
+        self._daily_loss = 0.0
+        self._daily_trades = 0
+        self._max_drawdown = 0.0
 
-    def calculate_total_risk(self, mt5_client: MT5Client) -> float:
-        positions = self.get_open_positions(mt5_client)
-        total_risk_amount = 0.0
-        for pos in positions:
-            entry = pos.get("entry", 0.0)
-            sl = pos.get("sl", 0.0)
-            volume = pos.get("volume", 0.0)
-            if entry and sl and volume:
-                try:
-                    spec = mt5_client.get_symbol_spec(str(pos["symbol"]))
-                    tick_size = float(spec["tick_size"])
-                    tick_value = float(spec["tick_value"])
-                    if tick_size > 0 and tick_value > 0:
-                        total_risk_amount += (abs(entry - sl) / tick_size) * tick_value * volume
-                        continue
-                except Exception:
-                    pass
-                total_risk_amount += abs(entry - sl) * volume * CONTRACT_SIZE
+    @property
+    def daily_loss(self) -> float:
+        return self._daily_loss
 
-        equity = mt5_client.get_equity()
-        if equity <= 0:
-            return 0.0
+    @property
+    def daily_trades(self) -> int:
+        return self._daily_trades
 
-        return total_risk_amount / equity
+    @property
+    def max_drawdown(self) -> float:
+        return self._max_drawdown
 
-    def approve_trade(self, direction: str, mt5_client: MT5Client) -> tuple[bool, str]:
-        direction = direction.lower()
-        try:
-            positions = self.get_open_positions(mt5_client)
-        except Exception as exc:
-            return False, f"open_positions_failed:{exc}"
-
-        if len(positions) >= settings.global_max_concurrent_positions:
-            return False, "max_concurrent_positions"
-
-        same_direction_count = sum(
-            1 for pos in positions
-            if (pos["direction"] == direction or
-                (direction == "buy" and pos["direction"] == "bull") or
-                (direction == "sell" and pos["direction"] == "bear"))
-        )
-        if same_direction_count >= MAX_SAME_DIRECTION_POSITIONS:
-            return False, "max_same_direction_positions"
-
-        total_risk_pct = self.calculate_total_risk(mt5_client)
-        if total_risk_pct >= settings.global_max_risk_percent:
-            return False, "max_total_risk_percent"
-
-        return True, "approved"
-
-    def check_limits(
-        self,
-        current_equity: float | None = None,
-        peak_equity: float | None = None,
-    ) -> tuple[bool, str]:
-        if self.daily_loss >= settings.global_daily_loss_limit * self.account_balance:
-            return False, "daily_loss_limit"
-
-        effective_current_equity = (
-            current_equity
-            if current_equity is not None and current_equity > 0
-            else self.account_balance
-        )
-        effective_peak_equity = (
-            peak_equity
-            if peak_equity is not None and peak_equity > 0
-            else self.peak_equity
-            if self.peak_equity is not None and self.peak_equity > 0
-            else effective_current_equity
+    def can_open_position(self) -> bool:
+        max_open = int(getattr(self.config, "max_open_trades", 3))
+        open_trades = int(getattr(self.config, "open_trades",
+                          getattr(self.config, "current_open_trades", 0)))
+        max_daily = int(getattr(self.config, "max_daily_trades", 15))
+        daily_limit = self.starting_balance * \
+            abs(float(getattr(self.config, "max_daily_loss", 0.015)))
+        return (
+            open_trades < max_open
+            and self._daily_trades < max_daily
+            and self._daily_loss < daily_limit
+            and not self.check_drawdown()
         )
 
-        if effective_peak_equity <= 0:
-            return True, "ok"
+    def calculate_position_size(self, account_balance: float, risk_percent: float, sl_pips: float, pip_value: float) -> float:
+        values = (account_balance, risk_percent, sl_pips, pip_value)
+        if not all(math.isfinite(float(value)) for value in values):
+            raise ValueError("position sizing inputs must be finite")
+        if account_balance <= 0 or risk_percent <= 0 or sl_pips <= 0 or pip_value <= 0:
+            raise ValueError("position sizing inputs must be positive")
+        capped_risk = min(float(risk_percent), self.MAX_RISK_PER_TRADE)
+        raw_size = account_balance * capped_risk / (sl_pips * pip_value)
+        return math.floor(raw_size * 100) / 100
 
-        drawdown = (effective_peak_equity - effective_current_equity) / effective_peak_equity
-        if drawdown >= settings.global_drawdown_limit:
-            return False, "overall_drawdown_limit"
+    def update_daily_stats(self, profit: float) -> None:
+        if not math.isfinite(float(profit)):
+            raise ValueError("profit must be finite")
+        self.current_balance += float(profit)
+        self._daily_trades += 1
+        if profit < 0:
+            self._daily_loss += abs(float(profit))
+        self.peak_balance = max(self.peak_balance, self.current_balance)
+        if self.peak_balance > 0:
+            drawdown = max(0.0, (self.peak_balance -
+                           self.current_balance) / self.peak_balance)
+            self._max_drawdown = max(self._max_drawdown, drawdown)
 
-        return True, "ok"
+    def reset_daily_stats(self) -> None:
+        self._daily_loss = 0.0
+        self._daily_trades = 0
+        self._max_drawdown = 0.0
+        self.peak_balance = self.current_balance
 
-    def check_trade_limits(self, trade_plan: dict[str, Any]) -> bool:
-        assessment = self.assess_trade(trade_plan)
-        return assessment.allowed
-
-    def assess_trade(self, trade_plan: dict[str, Any]) -> RiskAssessment:
-        entry_price = float(trade_plan.get("entry_price", 0.0))
-        stop_loss_price = float(trade_plan.get("stop_loss", 0.0))
-        if self.account_balance <= 0:
-            return RiskAssessment(False, "invalid_balance", 0.0, 0.0, 0.0, 0.0)
-        if entry_price <= 0 or stop_loss_price <= 0:
-            return RiskAssessment(False, "invalid_prices", 0.0, 0.0, 0.0, 0.0)
-
-        distance = abs(entry_price - stop_loss_price)
-        if distance <= 0:
-            return RiskAssessment(False, "invalid_risk_distance", 0.0, 0.0, 0.0, 0.0)
-
-        risk_amount = self.account_balance * settings.risk_per_trade
-        max_position_size = risk_amount / (distance * CONTRACT_SIZE)
-        position_size = min(max_position_size, self.account_balance * 0.25)
-        position_size = max(0.0, position_size)
-
-        daily_loss_limit = settings.daily_loss_limit * self.account_balance
-        drawdown_limit = settings.drawdown_limit * self.account_balance
-
-        if self.daily_loss >= drawdown_limit:
-            drawdown_fraction = 0.0
-            return RiskAssessment(False, "drawdown_limit", risk_amount, position_size, max_position_size, drawdown_fraction)
-
-        if self.daily_loss >= daily_loss_limit:
-            drawdown_fraction = max(0.0, (drawdown_limit - self.daily_loss) / self.account_balance)
-            return RiskAssessment(False, "daily_loss_limit", risk_amount, position_size, max_position_size, drawdown_fraction)
-
-        drawdown_fraction = max(0.0, (drawdown_limit - self.daily_loss) / self.account_balance)
-        return RiskAssessment(True, "ok", risk_amount, position_size, max_position_size, drawdown_fraction)
-
-    def position_size(self, entry_price: float, stop_loss_price: float) -> float:
-        assessment = self.assess_trade({"entry_price": entry_price, "stop_loss": stop_loss_price})
-        return assessment.position_size
+    def check_drawdown(self) -> bool:
+        limit = abs(float(getattr(self.config, "drawdown_limit", 0.10)))
+        if self.peak_balance <= 0:
+            return True
+        current_drawdown = max(
+            0.0, (self.peak_balance - self.current_balance) / self.peak_balance)
+        self._max_drawdown = max(self._max_drawdown, current_drawdown)
+        return current_drawdown >= limit or self._max_drawdown >= limit

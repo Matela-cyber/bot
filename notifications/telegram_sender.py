@@ -1,63 +1,71 @@
-from __future__ import annotations
+"""Telegram notification sender."""
 
-from datetime import datetime, timezone
-from typing import Any
+import logging
+from typing import Optional
 
 import requests
 
+logger = logging.getLogger(__name__)
+
 
 class TelegramSender:
-    """Minimal Telegram alert sender with safety and diagnostics."""
-
-    def __init__(self, token: str | None = None, chat_id: str | None = None) -> None:
+    def __init__(self, token: str, chat_id: str):
         self.token = token
         self.chat_id = chat_id
+        self.base_url = f"https://api.telegram.org/bot{token}"
+        self.enabled = bool(token and chat_id and token !=
+                            "your_bot_token" and chat_id != "your_chat_id")
 
-    def send(self, message: str) -> bool:
-        if not self.token or not self.chat_id:
+    def send_message(self, message: str, parse_mode: str = "HTML") -> bool:
+        if not self.enabled:
             return False
-        url = f"https://api.telegram.org/bot{self.token}/sendMessage"
+
+        if len(message) > 4000:
+            message = message[:3950] + "\n\n... (truncated)"
+
         try:
-            response = requests.post(
-                url,
-                json={"chat_id": self.chat_id, "text": message},
-                timeout=10,
-            )
-            response.raise_for_status()
-            return True
-        except requests.RequestException:
+            url = f"{self.base_url}/sendMessage"
+            payload = {
+                "chat_id": self.chat_id,
+                "text": message,
+                "parse_mode": parse_mode
+            }
+            response = requests.post(url, json=payload, timeout=10)
+
+            if response.status_code == 200:
+                logger.info(f"Telegram message sent")
+                return True
+            else:
+                logger.error(f"Telegram send failed: {response.status_code}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Telegram send error: {e}")
             return False
 
-    def compose_trade_alert(self, trade_plan: dict[str, Any], execution_result: dict[str, Any]) -> str:
-        symbol = trade_plan.get("symbol", "UNKNOWN")
-        direction = trade_plan.get("direction", "neutral").title()
-        direction_emoji = "🚀" if trade_plan.get("direction") == "bull" else "🔻"
-        when = execution_result.get("exit_time")
-        if isinstance(when, datetime):
-            when = when.strftime("%Y-%m-%d %H:%M UTC")
-        elif when is None:
-            when = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-
-        ticket = execution_result.get("ticket") or execution_result.get("order_id") or "N/A"
-        mode = execution_result.get("mode", "live")
-        error_message = execution_result.get("error_message")
+    def send_trade_signal(self, signal_data: dict) -> bool:
+        """Format and send a trade signal."""
+        symbol = signal_data.get("symbol", "UNKNOWN")
+        direction = signal_data.get("signal", "").upper()
+        trade = signal_data.get("trade", {})
+        entry = trade.get("entry", 0)
+        stop_loss = trade.get("stop_loss", 0)
+        take_profit = trade.get("take_profit", 0)
+        confidence = signal_data.get("confidence", 0)
+        size = signal_data.get("size", 0)
+        strategy = signal_data.get("strategy", "mean_reversion")
 
         message = (
-            "Trade Alert\n"
-            f"Mode: {mode.upper()}\n"
-            f"Symbol: {symbol}\n"
-            f"When: {when}\n"
-            f"Pattern: {trade_plan.get('pattern_name', 'unknown')}\n"
-            f"Direction: {direction_emoji} {direction}\n"
-            f"Entry: {trade_plan.get('entry_price', 0.0):.5f}\n"
-            f"SL: {trade_plan.get('stop_loss', 0.0):.5f}\n"
-            f"TP: {trade_plan.get('take_profit', 0.0):.5f}\n"
-            f"Size: {trade_plan.get('position_size', 0.0):.4f}\n"
-            f"Risk: ${trade_plan.get('risk_amount', 0.0):.2f}\n"
-            f"Quality: {trade_plan.get('quality', 0.0):.2f}\n"
-            f"Confluence: {trade_plan.get('confluence_score', 0.0):.2f}\n"
-            f"Ticket: {ticket}\n"
-            f"Status: {execution_result.get('exit_reason', 'executed')}\n"
-            + (f"Error: {error_message}\n" if error_message else "")
+            f"📈 <b>{direction} {symbol}</b>\n"
+            f"Entry: {entry:.5f}\n"
+            f"SL: {stop_loss:.5f}\n"
+            f"TP: {take_profit:.5f}\n"
+            f"Size: {size:.2f} lots\n"
+            f"Confidence: {confidence:.1f}%\n"
+            f"Strategy: {strategy}"
         )
-        return message
+        return self.send_message(message)
+
+    def send_error(self, error_message: str) -> bool:
+        message = f"❌ <b>Error</b>\n{error_message[:500]}"
+        return self.send_message(message)

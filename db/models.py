@@ -1,93 +1,101 @@
+"""SQLAlchemy models and database session helpers for the trading bot."""
+
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime
+from pathlib import Path
+from typing import Any
 
-from sqlalchemy import Date, DateTime, Float, Integer, String, Text
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import Date, DateTime, Float, Integer, String, create_engine
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
+
+from config import config
 
 
 class Base(DeclarativeBase):
-    """Base class for typed SQLAlchemy models."""
-
-
-def utc_now() -> datetime:
-    """Return a timezone-aware UTC timestamp for database defaults."""
-    return datetime.now(timezone.utc)
-
-
-class PatternEvent(Base):
-    __tablename__ = "pattern_events"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    timestamp: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=utc_now)
-    timeframe: Mapped[str | None] = mapped_column(String(10))
-    pattern_name: Mapped[str | None] = mapped_column(String(50))
-    breakout_level: Mapped[float | None] = mapped_column(Float)
-    stop_loss_zone: Mapped[float | None] = mapped_column(Float)
-    ml_confidence: Mapped[float | None] = mapped_column(Float)
-    candlestick_bonus: Mapped[bool] = mapped_column(default=False)
-    candlestick_pattern: Mapped[str | None] = mapped_column(String(80))
-    candlestick_priority: Mapped[str | None] = mapped_column(String(20))
-    candlestick_priority_bonus: Mapped[float] = mapped_column(
-        Float, default=0.0)
-    final_score: Mapped[float | None] = mapped_column(Float)
-    executed: Mapped[bool] = mapped_column(default=False)
-    result: Mapped[str | None] = mapped_column(String(10))
+    """Base class for all database models."""
 
 
 class Trade(Base):
+    """A single opened or closed trade."""
+
     __tablename__ = "trades"
-    trade_id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    symbol: Mapped[str] = mapped_column(
-        String(10), nullable=False, default="EURUSD")
-    entry_time: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True))
-    exit_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    direction: Mapped[str | None] = mapped_column(String(4))
-    entry_price: Mapped[float | None] = mapped_column(Float)
-    stop_loss: Mapped[float | None] = mapped_column(Float)
-    take_profit: Mapped[float | None] = mapped_column(Float)
-    exit_price: Mapped[float | None] = mapped_column(Float)
-    pnl_pips: Mapped[int | None] = mapped_column(Integer)
-    pnl_amount: Mapped[float | None] = mapped_column(Float)
-    pnl_percentage: Mapped[float | None] = mapped_column(Float)
-    position_size: Mapped[float | None] = mapped_column(Float)
-    pattern_name: Mapped[str | None] = mapped_column(String(50))
-    score: Mapped[int] = mapped_column(Integer, default=0)
-    regime: Mapped[str | None] = mapped_column(String(20))
-    falcon_scores: Mapped[str | None] = mapped_column(Text)
-    mae_pips: Mapped[int] = mapped_column(Integer, default=0)
-    mfe_pips: Mapped[int] = mapped_column(Integer, default=0)
-    hold_time_minutes: Mapped[int] = mapped_column(Integer, default=0)
-    exit_reason: Mapped[str | None] = mapped_column(String(20))
-    rl_action_taken: Mapped[str | None] = mapped_column(String(20))
-    reward: Mapped[float | None] = mapped_column(Float)
-    falcon_overall_score: Mapped[float] = mapped_column(Float, default=0.0)
-    falcon_report: Mapped[str | None] = mapped_column(Text)
+
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True)
+    symbol: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    direction: Mapped[str] = mapped_column(String(10), nullable=False)
+    entry_price: Mapped[float] = mapped_column(Float, nullable=False)
+    stop_loss: Mapped[float | None] = mapped_column(Float, nullable=True)
+    take_profit: Mapped[float | None] = mapped_column(Float, nullable=True)
+    position_size: Mapped[float] = mapped_column(Float, nullable=False)
+    entry_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True)
+    exit_time: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True)
+    exit_price: Mapped[float | None] = mapped_column(Float, nullable=True)
+    profit: Mapped[float | None] = mapped_column(Float, nullable=True)
+    profit_pips: Mapped[float | None] = mapped_column(Float, nullable=True)
+    exit_reason: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    strategy: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
 
 
-class FailedOrder(Base):
-    __tablename__ = "failed_orders"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    timestamp: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), default=utc_now)
-    symbol: Mapped[str] = mapped_column(String(10), nullable=False)
-    order_type: Mapped[str | None] = mapped_column(String(10))
-    volume: Mapped[float | None] = mapped_column(Float)
-    sl: Mapped[float | None] = mapped_column(Float)
-    tp: Mapped[float | None] = mapped_column(Float)
-    error_code: Mapped[int | None] = mapped_column(Integer)
-    error_message: Mapped[str | None] = mapped_column(Text)
-    payload: Mapped[str | None] = mapped_column(Text)
+class DailyStats(Base):
+    """Aggregated account performance for one calendar day."""
 
-
-class DailyStat(Base):
     __tablename__ = "daily_stats"
-    date: Mapped[date] = mapped_column(Date, primary_key=True)
-    start_balance: Mapped[float | None] = mapped_column(Float)
-    end_balance: Mapped[float | None] = mapped_column(Float)
-    daily_pnl: Mapped[float | None] = mapped_column(Float)
-    daily_loss: Mapped[float] = mapped_column(Float, default=0.0)
-    drawdown_peak: Mapped[float | None] = mapped_column(Float)
-    drawdown_percent: Mapped[float | None] = mapped_column(Float)
-    halt_triggered: Mapped[bool | None] = mapped_column(default=False)
+
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True)
+    date: Mapped[date] = mapped_column(
+        Date, nullable=False, unique=True, index=True)
+    starting_balance: Mapped[float] = mapped_column(Float, nullable=False)
+    ending_balance: Mapped[float] = mapped_column(Float, nullable=False)
+    total_trades: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0)
+    winning_trades: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0)
+    losing_trades: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0)
+    total_profit: Mapped[float] = mapped_column(
+        Float, nullable=False, default=0.0)
+    total_loss: Mapped[float] = mapped_column(
+        Float, nullable=False, default=0.0)
+    net_profit: Mapped[float] = mapped_column(
+        Float, nullable=False, default=0.0)
+    max_drawdown: Mapped[float] = mapped_column(
+        Float, nullable=False, default=0.0)
+    win_rate: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+
+
+def _database_url(db_path: str | Path | None) -> str:
+    """Build a SQLite URL from a path, preserving support for in-memory DBs."""
+    path = str(db_path or config.db_path)
+    if path == ":memory:":
+        return "sqlite+pysqlite:///:memory:"
+    database_path = Path(path).expanduser()
+    if not database_path.is_absolute():
+        database_path = Path(__file__).resolve().parent.parent / database_path
+    database_path.parent.mkdir(parents=True, exist_ok=True)
+    return f"sqlite+pysqlite:///{database_path.as_posix()}"
+
+
+def init_db(db_path: str | Path | None = None) -> Engine:
+    """Create database tables and return the configured SQLite engine."""
+    engine = create_engine(_database_url(db_path), future=True)
+    Base.metadata.create_all(engine)
+    return engine
+
+
+def get_session(engine: Engine | None = None, db_path: str | Path | None = None) -> Session:
+    """Return a new SQLAlchemy session for the configured SQLite database."""
+    active_engine = engine or init_db(db_path)
+    return sessionmaker(bind=active_engine, autoflush=False, expire_on_commit=False)()
+
+
+def model_values(model: Any) -> dict[str, Any]:
+    """Return mapped column values from a model instance."""
+    return {column.name: getattr(model, column.name) for column in model.__table__.columns}

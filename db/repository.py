@@ -1,304 +1,103 @@
+"""Persistence operations for trades and daily account statistics."""
+
 from __future__ import annotations
 
-import json
-from collections.abc import Generator
-from contextlib import contextmanager
-from datetime import date, datetime
-from typing import Any
+from datetime import date, datetime, time, timedelta, timezone
+from pathlib import Path
+from typing import Any, Mapping
 
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import func, select
+from sqlalchemy.engine import Engine
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
-from db.models import Base, DailyStat, FailedOrder, PatternEvent, Trade
+from .models import DailyStats, Trade, get_session, init_db
 
 
-class Repository:
-    """Production-style repository wrapper for the local SQLite analysis database."""
+class RepositoryError(RuntimeError):
+    """Raised when a repository operation cannot be committed."""
 
-    def __init__(self, database_url: str = "sqlite:///bot.db") -> None:
-        self.engine = create_engine(database_url, future=True, echo=False)
-        Base.metadata.create_all(self.engine)
-        self._migrate_schema()
-        self.Session = sessionmaker(bind=self.engine, future=True)
 
-    @staticmethod
-    def _update_float_attribute(instance: object, attr: str, value: Any, default: float = 0.0) -> None:
-        if value is None:
-            raw = getattr(instance, attr, default)
-            try:
-                new_value = float(raw)
-            except (TypeError, ValueError):
-                new_value = default
-        else:
-            try:
-                new_value = float(value)
-            except (TypeError, ValueError):
-                new_value = default
-        setattr(instance, attr, new_value)
+class TradeRepository:
+    """Repository for trade records backed by SQLite."""
 
-    @staticmethod
-    def _update_bool_attribute(instance: object, attr: str, value: Any, default: bool = False) -> None:
-        if value is None:
-            raw = getattr(instance, attr, default)
-            new_value = bool(raw)
-        else:
-            new_value = bool(value)
-        setattr(instance, attr, new_value)
+    def __init__(self, db_path: str | Path | None = None, engine: Engine | None = None) -> None:
+        """Initialize the repository and create missing tables."""
+        self.engine = engine or init_db(db_path)
+        self.session: Session = get_session(self.engine)
 
-    def _migrate_schema(self) -> None:
-        with self.engine.connect() as conn:
-            if self.engine.dialect.name != "sqlite":
-                return
+    def _commit(self) -> None:
+        """Commit the current transaction and normalize database errors."""
+        try:
+            self.session.commit()
+        except SQLAlchemyError as exc:
+            self.session.rollback()
+            raise RepositoryError("Database transaction failed") from exc
 
-            required_trade_columns = {
-                "pnl_amount": "FLOAT DEFAULT 0.0",
-                "pnl_percentage": "FLOAT DEFAULT 0.0",
-                "position_size": "FLOAT DEFAULT 0.0",
-                "pattern_name": "VARCHAR(50)",
-                "score": "INTEGER DEFAULT 0",
-                "regime": "VARCHAR(20)",
-                "falcon_scores": "TEXT",
-                "mae_pips": "INTEGER DEFAULT 0",
-                "mfe_pips": "INTEGER DEFAULT 0",
-                "hold_time_minutes": "INTEGER DEFAULT 0",
-                "exit_reason": "VARCHAR(20)",
-                "rl_action_taken": "VARCHAR(20)",
-                "reward": "FLOAT DEFAULT 0.0",
-                "take_profit": "FLOAT DEFAULT 0.0",
-                "falcon_overall_score": "FLOAT DEFAULT 0.0",
-                "falcon_report": "TEXT",
-            }
-            required_pattern_columns = {
-                "candlestick_pattern": "VARCHAR(80)",
-                "candlestick_priority": "VARCHAR(20)",
-                "candlestick_priority_bonus": "FLOAT DEFAULT 0.0",
-            }
-            required_daily_stat_columns = {
-                "daily_loss": "FLOAT DEFAULT 0.0",
-            }
-
-            result = conn.execute(text("PRAGMA table_info(trades)"))
-            existing_trade_columns = {row[1] for row in result.fetchall()}
-            for column_name, column_definition in required_trade_columns.items():
-                if column_name not in existing_trade_columns:
-                    conn.execute(
-                        text(f"ALTER TABLE trades ADD COLUMN {column_name} {column_definition}"))
-
-            result = conn.execute(text("PRAGMA table_info(pattern_events)"))
-            existing_pattern_columns = {row[1] for row in result.fetchall()}
-            for column_name, column_definition in required_pattern_columns.items():
-                if column_name not in existing_pattern_columns:
-                    conn.execute(
-                        text(f"ALTER TABLE pattern_events ADD COLUMN {column_name} {column_definition}"))
-
-            result = conn.execute(text("PRAGMA table_info(daily_stats)"))
-            existing_daily_stat_columns = {row[1] for row in result.fetchall()}
-            for column_name, column_definition in required_daily_stat_columns.items():
-                if column_name not in existing_daily_stat_columns:
-                    conn.execute(
-                        text(f"ALTER TABLE daily_stats ADD COLUMN {column_name} {column_definition}"))
-            conn.commit()
-
-    @contextmanager
-    def session(self) -> Generator[Session, None, None]:
-        with self.Session() as session:
-            try:
-                yield session
-                session.commit()
-            except Exception:
-                session.rollback()
+    def save_trade(self, trade: Trade | Mapping[str, Any]) -> Trade:
+        """Save and return a trade, accepting a model or column mapping."""
+        record = trade if isinstance(trade, Trade) else Trade(**dict(trade))
+        try:
+            self.session.add(record)
+            self._commit()
+            self.session.refresh(record)
+            return record
+        except (SQLAlchemyError, TypeError) as exc:
+            self.session.rollback()
+            if isinstance(exc, RepositoryError):
                 raise
-            finally:
-                session.close()
+            raise RepositoryError("Could not save trade") from exc
 
-    def get_daily_stat(self, stat_date: date) -> DailyStat | None:
-        with self.session() as session:
-            return session.get(DailyStat, stat_date)
+    def update_trade(self, trade_id: int, **updates: Any) -> Trade | None:
+        """Update a trade by ID and return it, or ``None`` when not found."""
+        try:
+            record = self.session.get(Trade, trade_id)
+            if record is None:
+                return None
+            valid_columns = {
+                column.name for column in Trade.__table__.columns if column.name != "id"}
+            for key, value in updates.items():
+                if key not in valid_columns:
+                    raise ValueError(f"Unknown trade field: {key}")
+                setattr(record, key, value)
+            self._commit()
+            return record
+        except ValueError:
+            self.session.rollback()
+            raise
+        except SQLAlchemyError as exc:
+            self.session.rollback()
+            raise RepositoryError("Could not update trade") from exc
 
-    def get_daily_loss(self, stat_date: date) -> float:
-        with self.session() as session:
-            total_loss = session.execute(
-                text(
-                    "SELECT SUM(pnl_amount) FROM trades WHERE DATE(entry_time) = :date AND pnl_amount < 0.0"
-                ),
-                {"date": stat_date.isoformat()},
-            ).scalar()
-            if total_loss is None:
-                return 0.0
-            return abs(float(total_loss))
+    def get_open_trades(self) -> list[Trade]:
+        """Return trades that do not yet have an exit time."""
+        return list(self.session.scalars(select(Trade).where(Trade.exit_time.is_(None)).order_by(Trade.entry_time)).all())
 
-    def get_daily_pnl(self, stat_date: date) -> float:
-        with self.session() as session:
-            total_pnl = session.execute(
-                text("SELECT SUM(pnl_amount) FROM trades WHERE DATE(entry_time) = :date"),
-                {"date": stat_date.isoformat()},
-            ).scalar()
-            return float(total_pnl or 0.0)
+    def get_closed_trades(self) -> list[Trade]:
+        """Return trades that have an exit time."""
+        return list(self.session.scalars(select(Trade).where(Trade.exit_time.is_not(None)).order_by(Trade.exit_time.desc())).all())
 
-    def add_pattern_event(self, payload: dict[str, Any]) -> None:
-        timestamp = payload.get("timestamp")
-        if isinstance(timestamp, str):
-            timestamp = datetime.fromisoformat(timestamp)
+    def get_today_trades(self) -> list[Trade]:
+        """Return trades entered since the start of the current UTC day."""
+        start = datetime.combine(datetime.now(
+            timezone.utc).date(), time.min, tzinfo=timezone.utc)
+        return list(self.session.scalars(select(Trade).where(Trade.entry_time >= start).order_by(Trade.entry_time)).all())
 
-        event = PatternEvent(
-            timestamp=timestamp,
-            timeframe=payload.get("timeframe", "15m"),
-            pattern_name=payload.get("pattern_name", "unknown"),
-            breakout_level=float(payload.get("breakout_level") or 0.0),
-            stop_loss_zone=float(payload.get("stop_loss_zone") or 0.0),
-            ml_confidence=float(payload.get("confidence") or 0.0),
-            candlestick_bonus=bool(payload.get("candlestick_bonus", False)),
-            candlestick_pattern=payload.get("candlestick_pattern"),
-            candlestick_priority=payload.get("candlestick_priority"),
-            final_score=float(payload.get("final_score") or 0.0),
-            executed=bool(payload.get("executed", False)),
-            result=payload.get("result"),
-        )
-        with self.session() as session:
-            session.add(event)
+    def get_today_profit(self) -> float:
+        """Return the sum of today's realized profits, treating open trades as zero."""
+        start = datetime.combine(datetime.now(
+            timezone.utc).date(), time.min, tzinfo=timezone.utc)
+        result = self.session.scalar(select(func.coalesce(
+            func.sum(Trade.profit), 0.0)).where(Trade.entry_time >= start))
+        return float(result or 0.0)
 
-    def add_trade(self, payload: dict[str, Any]) -> None:
-        entry_time = payload.get("entry_time")
-        if isinstance(entry_time, str):
-            entry_time = datetime.fromisoformat(entry_time)
+    def get_stats(self, days: int = 30) -> list[DailyStats]:
+        """Return daily statistics for the most recent ``days`` calendar days."""
+        if days < 1:
+            raise ValueError("days must be at least 1")
+        first_day = date.today() - timedelta(days=days - 1)
+        return list(self.session.scalars(select(DailyStats).where(DailyStats.date >= first_day).order_by(DailyStats.date)).all())
 
-        exit_time = payload.get("exit_time")
-        if isinstance(exit_time, str):
-            exit_time = datetime.fromisoformat(exit_time)
-
-        falcon_report = payload.get("falcon_report")
-        if isinstance(falcon_report, dict):
-            falcon_report = json.dumps(falcon_report)
-
-        falcon_scores = payload.get("falcon_scores")
-        if isinstance(falcon_scores, dict):
-            falcon_scores = json.dumps(falcon_scores)
-
-        trade = Trade(
-            trade_id=payload["trade_id"],
-            symbol=payload.get("symbol", "EURUSD"),
-            entry_time=entry_time,
-            exit_time=exit_time,
-            direction=payload.get("direction", "neutral"),
-            entry_price=float(payload.get("entry_price") or 0.0),
-            stop_loss=float(payload.get("stop_loss") or 0.0),
-            take_profit=float(payload.get("take_profit") or 0.0),
-            exit_price=float(payload.get("exit_price") or 0.0),
-            pnl_pips=int(payload.get("pnl_pips", 0)),
-            pnl_amount=float(payload.get("pnl_amount") or 0.0),
-            pnl_percentage=float(payload.get("pnl_percentage") or 0.0),
-            position_size=float(payload.get("position_size") or 0.0),
-            pattern_name=payload.get("pattern_name"),
-            score=int(payload.get("score", 0) or 0),
-            regime=payload.get("regime"),
-            falcon_scores=falcon_scores,
-            mae_pips=int(payload.get("mae_pips", 0)),
-            mfe_pips=int(payload.get("mfe_pips", 0)),
-            hold_time_minutes=int(payload.get("hold_time_minutes", 0)),
-            exit_reason=payload.get("exit_reason"),
-            rl_action_taken=payload.get("rl_action_taken"),
-            reward=float(payload.get("reward") or 0.0),
-            falcon_overall_score=float(
-                payload.get("falcon_overall_score") or 0.0),
-            falcon_report=falcon_report,
-        )
-        with self.session() as session:
-            session.add(trade)
-
-    def upsert_daily_stat(self, payload: dict[str, Any]) -> None:
-        stat_date = payload.get("date")
-        if isinstance(stat_date, str):
-            stat_date = date.fromisoformat(stat_date)
-
-        with self.session() as session:
-            existing = session.get(DailyStat, stat_date)
-            if existing is None:
-                existing = DailyStat(
-                    date=stat_date,
-                    start_balance=float(payload.get("start_balance") or 0.0),
-                    end_balance=float(payload.get("end_balance") or 0.0),
-                    daily_pnl=float(payload.get("daily_pnl") or 0.0),
-                    daily_loss=float(payload.get("daily_loss") or 0.0),
-                    drawdown_peak=float(payload.get("drawdown_peak") or 0.0),
-                    drawdown_percent=float(
-                        payload.get("drawdown_percent") or 0.0),
-                    halt_triggered=bool(payload.get("halt_triggered", False)),
-                )
-                session.add(existing)
-            else:
-                self._update_float_attribute(
-                    existing, "start_balance", payload.get("start_balance"))
-                self._update_float_attribute(
-                    existing, "end_balance", payload.get("end_balance"))
-                self._update_float_attribute(
-                    existing, "daily_pnl", payload.get("daily_pnl"))
-                self._update_float_attribute(
-                    existing, "daily_loss", payload.get("daily_loss"))
-                self._update_float_attribute(
-                    existing, "drawdown_peak", payload.get("drawdown_peak"))
-                self._update_float_attribute(
-                    existing, "drawdown_percent", payload.get("drawdown_percent"))
-                self._update_bool_attribute(
-                    existing, "halt_triggered", payload.get("halt_triggered"), False)
-
-    def update_trade_exit(
-        self,
-        trade_id: str,
-        exit_price: float,
-        pnl: float,
-        pattern_name: str | None,
-        falcon_scores: dict[str, Any] | None,
-        mae: int,
-        mfe: int,
-        hold_time: int,
-        exit_reason: str,
-    ) -> None:
-        serialized_scores: str | None = None
-        if falcon_scores is not None:
-            serialized_scores = json.dumps(falcon_scores)
-
-        with self.session() as session:
-            trade = session.get(Trade, trade_id)
-            if trade is None:
-                raise ValueError(f"Trade {trade_id} not found")
-
-            entry_price_raw = getattr(trade, "entry_price", None)
-            entry_price = float(
-                entry_price_raw) if entry_price_raw is not None else None
-
-            setattr(trade, "exit_price", float(exit_price))
-            setattr(trade, "pnl_amount", float(pnl))
-            setattr(trade, "exit_reason", exit_reason)
-            setattr(trade, "pattern_name", pattern_name)
-            setattr(trade, "falcon_scores", serialized_scores)
-            setattr(trade, "mae_pips", int(mae))
-            setattr(trade, "mfe_pips", int(mfe))
-            setattr(trade, "hold_time_minutes", int(hold_time))
-
-            if entry_price is not None and entry_price != 0.0:
-                setattr(trade, "pnl_percentage", float(
-                    (float(pnl) / entry_price) * 100))
-            else:
-                setattr(trade, "pnl_percentage", 0.0)
-
-    def get_trade_by_id(self, trade_id: str) -> Trade | None:
-        with self.session() as session:
-            return session.get(Trade, trade_id)
-
-    def add_failed_order(self, payload: dict[str, Any]) -> None:
-        error_code_value = payload.get("error_code")
-        error_code = int(
-            error_code_value) if error_code_value is not None else None
-
-        failed_order = FailedOrder(
-            symbol=payload.get("symbol", ""),
-            order_type=payload.get("order_type"),
-            volume=float(payload.get("volume") or 0.0),
-            sl=float(payload.get("stop_loss") or 0.0),
-            tp=float(payload.get("take_profit") or 0.0),
-            error_code=error_code,
-            error_message=payload.get("error_message"),
-            payload=json.dumps(payload.get("payload", {}), default=str),
-        )
-        with self.session() as session:
-            session.add(failed_order)
+    def close(self) -> None:
+        """Close the repository's active database session."""
+        self.session.close()

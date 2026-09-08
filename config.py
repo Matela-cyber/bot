@@ -1,169 +1,101 @@
+"""Configuration for the Mean Reversion bot."""
+
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from typing import Any, List
 
-import pytz
 from dotenv import load_dotenv
 
-ROOT = Path(__file__).resolve().parent
-load_dotenv(ROOT / ".env")
-LOCAL_TIMEZONE = pytz.timezone(
-    os.getenv("LOCAL_TIMEZONE", "Africa/Johannesburg"))
+PROJECT_ROOT = Path(__file__).resolve().parent
+load_dotenv(PROJECT_ROOT / ".env")
 
 
-@dataclass
-class Settings:
-    account_balance: float = float(os.getenv("ACCOUNT_BALANCE", "1000"))
-    risk_per_trade: float = float(os.getenv("RISK_PER_TRADE", "0.01"))
-    stop_loss_pips: int = int(os.getenv("STOP_LOSS_PIPS", "20"))
-    take_profit_pips: int = int(os.getenv("TAKE_PROFIT_PIPS", "40"))
-    daily_loss_limit: float = float(os.getenv("DAILY_LOSS_LIMIT", "0.03"))
-    drawdown_limit: float = float(os.getenv("DRAWDOWN_LIMIT", "0.15"))
-    loop_interval_seconds: int = int(os.getenv("LOOP_INTERVAL_SECONDS", "900"))
-    sqlite_database_path: str = os.getenv("SQLITE_DATABASE_PATH", "bot.db")
-    use_mt5_execution: bool = os.getenv(
-        "USE_MT5_EXECUTION", "false").lower() == "true"
-    mt5_account: int | None = int(
-        os.getenv("MT5_ACCOUNT", "0")) if os.getenv("MT5_ACCOUNT") else None
-    mt5_password: str | None = os.getenv("MT5_PASSWORD")
-    mt5_server: str | None = os.getenv("MT5_SERVER")
-    telegram_token: str | None = os.getenv("TELEGRAM_TOKEN")
-    telegram_chat_id: str | None = os.getenv("TELEGRAM_CHAT_ID")
-    xgboost_model_path: str | None = os.getenv("XGBOOST_MODEL_PATH")
-    min_entry_confidence: float = float(
-        os.getenv("MIN_ENTRY_CONFIDENCE", "0.70"))
-    min_confirmation: float = float(os.getenv("MIN_CONFIRMATION", "0.50"))
-    min_overall_score: float = float(os.getenv("MIN_OVERALL_SCORE", "0.70"))
-    # Smart Money Concepts (SMC) tuning via env
-    smc_min_fvg_size: float = float(os.getenv("SMC_MIN_FVG_SIZE", "0.00025"))
-    smc_atr_period: int = int(os.getenv("SMC_ATR_PERIOD", "20"))
-    smc_impulse_multiplier: float = float(
-        os.getenv("SMC_IMPULSE_MULTIPLIER", "2.0"))
-    smc_order_block_candles: int = int(
-        os.getenv("SMC_ORDER_BLOCK_CANDLES", "3"))
-    min_smc_score: float = float(os.getenv("MIN_SMC_SCORE", "0.5"))
-    confluence_timeframe_scales_raw: str = os.getenv(
-        "CONFLUENCE_TIMEFRAME_SCALES", "15min:1.0,1h:1.0,4h:1.0")
-    confluence_asset_scales_raw: str = os.getenv("CONFLUENCE_ASSET_SCALES", "")
-    # Weekend Filter
-    weekend_allow_trading: bool = os.getenv(
-        "WEEKEND_ALLOW_TRADING", "false").lower() == "true"
-    market_open_sunday: int = int(os.getenv("MARKET_OPEN_SUNDAY", "22"))
-    market_close_friday: int = int(os.getenv("MARKET_CLOSE_FRIDAY", "22"))
-    # Low Liquidity Filter
-    low_liquidity_filter_enabled: bool = os.getenv(
-        "LOW_LIQUIDITY_FILTER_ENABLED", "false").lower() == "true"
-    low_liquidity_allow_trading: bool = os.getenv(
-        "LOW_LIQUIDITY_ALLOW_TRADING", "false").lower() == "true"
-    low_liquidity_reduce_risk: bool = os.getenv(
-        "LOW_LIQUIDITY_REDUCE_RISK", "false").lower() == "true"
-    low_liquidity_block_start_utc: int = int(
-        os.getenv("LOW_LIQUIDITY_BLOCK_START_UTC", "22"))
-    low_liquidity_block_end_utc: int = int(
-        os.getenv("LOW_LIQUIDITY_BLOCK_END_UTC", "2"))
-    # Raw env strings for parsed properties
-    trading_pairs_raw: str = os.getenv(
-        "TRADING_PAIRS", "EURUSD,GBPUSD,USDJPY,AUDUSD,NZDUSD,USDCAD,USDCHF,EURGBP,EURAUD,GBPJPY")
-    pair_risk_allocation_raw: str = os.getenv("PAIR_RISK_ALLOCATION", "")
-    pair_timeframes_raw: str = os.getenv("PAIR_TIMEFRAMES", "")
-    global_max_concurrent_positions: int = int(
-        os.getenv("GLOBAL_MAX_CONCURRENT_POSITIONS", "5"))
-    global_max_risk_percent: float = float(
-        os.getenv("GLOBAL_MAX_RISK_PERCENT", "0.03"))
-    global_daily_loss_limit: float = float(
-        os.getenv("GLOBAL_DAILY_LOSS_LIMIT", "0.03"))
-    global_drawdown_limit: float = float(
-        os.getenv("GLOBAL_DRAWDOWN_LIMIT", "0.15"))
-    friday_cutoff_hour: int = int(os.getenv("FRIDAY_CUTOFF_HOUR", "17"))
-    max_positions_per_pair: int = int(os.getenv("MAX_POSITIONS_PER_PAIR", "2"))
-    max_total_positions: int = int(os.getenv("MAX_TOTAL_POSITIONS", "5"))
-    min_stacking_score: int = int(os.getenv("MIN_STACKING_SCORE", "70"))
-    min_score_for_override: int = int(
-        os.getenv("MIN_SCORE_FOR_OVERRIDE", "90"))
-    wait_hours_before_override: int = int(
-        os.getenv("WAIT_HOURS_BEFORE_OVERRIDE", "3"))
-    max_override_positions: int = int(os.getenv("MAX_OVERRIDE_POSITIONS", "2"))
-    # Regime-based strategy settings
-    min_score: int = int(os.getenv("MIN_SCORE", "70"))
-    max_concurrent_positions: int = int(
-        os.getenv("MAX_CONCURRENT_POSITIONS", "1"))
+def _env(name: str, default: str) -> str:
+    value = os.getenv(name)
+    return value.strip() if value and value.strip() else default
+
+
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int(_env(name, str(default)))
+    except ValueError:
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(_env(name, str(default)))
+    except ValueError:
+        return default
+
+
+@dataclass(frozen=True)
+class Config:
+    """Validated runtime settings."""
+
+    # MT5
+    mt5_path: str = _env("MT5_PATH", "")
+    mt5_server: str = _env("MT5_SERVER", "ICMarkets-Demo")
+    mt5_login: str = _env("MT5_LOGIN", "")
+    mt5_password: str = _env("MT5_PASSWORD", "")
+
+    # Trading
+    symbol: str = _env("SYMBOL", "EURUSD")
+    timeframe: str = _env("TIMEFRAME", "5m")
+    cycle_interval: int = _env_int("CYCLE_INTERVAL", 30)
+
+    # Risk (3% contract)
+    risk_per_trade: float = _env_float("RISK_PER_TRADE", 0.03)
+    max_daily_loss: float = _env_float("MAX_DAILY_LOSS", 0.05)
+    drawdown_limit: float = _env_float("DRAWDOWN_LIMIT", 0.50)
+    max_open_trades: int = _env_int("MAX_OPEN_TRADES", 4)
+    max_positions_per_pair: int = _env_int("MAX_POSITIONS_PER_PAIR", 2)
+    max_total_positions: int = _env_int("MAX_TOTAL_POSITIONS", 5)
 
     @property
-    def trading_pairs(self) -> list[str]:
-        """Parse trading pairs from environment."""
-        return [p.strip() for p in self.trading_pairs_raw.split(",") if p.strip()]
+    def trading_pairs(self) -> List[str]:
+        return ["AUDCAD", "GBPJPY", "EURJPY", "EURUSD", "EURGBP", "USDJPY", "USDCAD"]
 
-    @property
-    def pair_risk_allocation(self) -> dict[str, float]:
-        """Parse pair-level risk allocation from environment."""
-        result: dict[str, float] = {}
-        if self.pair_risk_allocation_raw:
-            for part in self.pair_risk_allocation_raw.split(","):
-                if ":" in part:
-                    key, value = part.split(":", 1)
-                    try:
-                        result[key.strip()] = float(value.strip())
-                    except ValueError:
-                        continue
-        return result
+    # Mean Reversion Settings
+    mr_hours: List[int] = field(default_factory=lambda: [0, 5, 11])
+    mr_days: List[int] = field(default_factory=lambda: [0, 3])
+    mr_rsi_threshold: float = _env_float("MR_RSI_THRESHOLD", 25.0)
+    mr_tp_ratio: float = _env_float("MR_TP_RATIO", 1.5)
+    mr_sl_pips: int = _env_int("MR_SL_PIPS", 20)
+    mr_atr_multiplier: float = _env_float("MR_ATR_MULTIPLIER", 1.0)
+    mr_min_confidence: float = _env_float("MR_MIN_CONFIDENCE", 60.0)
 
-    @property
-    def pair_timeframes(self) -> dict[str, str]:
-        """Parse pair timeframes from environment."""
-        result: dict[str, str] = {}
-        if self.pair_timeframes_raw:
-            for part in self.pair_timeframes_raw.split(","):
-                if ":" in part:
-                    key, value = part.split(":", 1)
-                    result[key.strip()] = value.strip()
-        return result
+    # Filters
+    max_spread: float = _env_float("MAX_SPREAD", 0.0003)
+    spread_filter_enabled: bool = _env(
+        "SPREAD_FILTER_ENABLED", "true").lower() == "true"
+    local_timezone: str = _env("LOCAL_TIMEZONE", "Africa/Johannesburg")
+    friday_cutoff_hour: int = _env_int("FRIDAY_CUTOFF_HOUR", 17)
+    low_liquidity_filter_enabled: bool = _env(
+        "LOW_LIQUIDITY_FILTER_ENABLED", "true").lower() == "true"
+    low_liquidity_block_start_utc: int = _env_int(
+        "LOW_LIQUIDITY_BLOCK_START_UTC", 22)
+    low_liquidity_block_end_utc: int = _env_int(
+        "LOW_LIQUIDITY_BLOCK_END_UTC", 2)
+    shock_filter_enabled: bool = _env(
+        "SHOCK_FILTER_ENABLED", "true").lower() == "true"
 
-    @staticmethod
-    def _parse_scalar_map(raw: str) -> dict[str, float]:
-        entries: dict[str, float] = {}
-        for part in raw.split(","):
-            if not part:
-                continue
-            if ":" not in part:
-                continue
-            key, value = part.split(":", 1)
-            try:
-                entries[key.strip().lower()] = float(value.strip())
-            except ValueError:
-                continue
-        return entries
+    # Database
+    db_path: str = _env("DB_PATH", "bot.db")
 
-    @property
-    def confluence_timeframe_scales(self) -> dict[str, float]:
-        return self._parse_scalar_map(self.confluence_timeframe_scales_raw)
+    # Telegram
+    telegram_token: str = _env("TELEGRAM_TOKEN", "")
+    telegram_chat_id: str = _env("TELEGRAM_CHAT_ID", "")
 
-    @property
-    def confluence_asset_scales(self) -> dict[str, float]:
-        return self._parse_scalar_map(self.confluence_asset_scales_raw)
+    # Logging
+    log_level: str = _env("LOG_LEVEL", "INFO").upper()
 
-    @property
-    def database_url(self) -> str:
-        return f"sqlite:///{self.sqlite_database_path}"
+    def is_telegram_enabled(self) -> bool:
+        placeholders = {"", "your_bot_token", "your_chat_id"}
+        return self.telegram_token not in placeholders and self.telegram_chat_id not in placeholders
 
 
-TRADING_PAIRS = ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD"]
-PAIR_RISK_ALLOCATION = {
-    "EURUSD": 0.005,
-    "GBPUSD": 0.005,
-    "USDJPY": 0.005,
-    "XAUUSD": 0.003,
-}
-PAIR_TIMEFRAMES = {
-    "EURUSD": "15m",
-    "GBPUSD": "15m",
-    "USDJPY": "15m",
-    "XAUUSD": "1h",
-}
-GLOBAL_MAX_CONCURRENT_POSITIONS = 3
-GLOBAL_MAX_RISK_PERCENT = 0.03
-GLOBAL_DAILY_LOSS_LIMIT = 0.03
-GLOBAL_DRAWDOWN_LIMIT = 0.15
-
-settings = Settings()
+config = Config()

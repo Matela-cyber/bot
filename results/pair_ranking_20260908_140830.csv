@@ -1,0 +1,8 @@
+rank,pair,strategy,risk_pct,trades,win_rate,net_profit,profit_factor
+1,AUDCAD,mean_reversion,3,34,88.24,325.1,10.5
+2,GBPJPY,mean_reversion,3,16,87.5,100.62,10.2
+3,EURJPY,mean_reversion,3,15,86.67,90.23,9.55
+4,EURUSD,mean_reversion,3,12,91.67,73.33,19.95
+5,EURGBP,mean_reversion,3,6,100.0,32.86,inf
+6,USDJPY,mean_reversion,3,13,53.85,17.29,1.71
+7,USDCAD,mean_reversion,3,1,0.0,-4.16,0.0

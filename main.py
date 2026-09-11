@@ -73,6 +73,7 @@ class MeanReversionBot:
         self.trading_enabled = True
         self.running = False
         self.active_pairs = self.config.trading_pairs
+        self._tracked_trade_ids: dict[int, int] = {}
 
     def _setup_logging(self) -> logging.Logger:
         return setup_logger("trinity", self.config.log_level)
@@ -103,8 +104,7 @@ class MeanReversionBot:
                 # Sleep on non-trading days
                 if not self._is_trading_day():
                     sleep_seconds = self._get_sleep_until_next_trading_day()
-                    self.logger.info(
-                        f"💤 Non-trading day. Sleeping {sleep_seconds/3600:.1f}h")
+                    self.logger.info(f"💤 Non-trading day. Sleeping {sleep_seconds/3600:.1f}h")
                     time.sleep(sleep_seconds)
                     continue
 
@@ -112,8 +112,7 @@ class MeanReversionBot:
                 if not self._is_active_hour():
                     sleep_seconds = self._get_sleep_until_next_active_hour()
                     if sleep_seconds > 60:
-                        self.logger.info(
-                            f"💤 Outside active hours. Sleeping {sleep_seconds/60:.0f}m")
+                        self.logger.info(f"💤 Outside active hours. Sleeping {sleep_seconds/60:.0f}m")
                         time.sleep(sleep_seconds)
                         continue
 
@@ -175,11 +174,11 @@ class MeanReversionBot:
         if not self.trading_filter.should_trade(data):
             return
 
-        # Generate signal (no SMC structure)
+        # Generate signal
         strategy = TrinityStrategy(
             frame=data,
             higher_tf=None,
-            structure={},  # Empty dict - not used
+            structure={},
             current_time=utc_now(),
             config=self.config,
         )
@@ -210,7 +209,6 @@ class MeanReversionBot:
             if not direction or not trade_plan:
                 return False
 
-            # Position limits
             positions = self.mt5_client.get_open_positions(pair)
             if len(positions) >= self.config.max_positions_per_pair:
                 return False
@@ -230,7 +228,6 @@ class MeanReversionBot:
             stop_loss = float(trade_plan["stop_loss"])
             take_profit = float(trade_plan["take_profit"])
 
-            # Position size (3% risk)
             account_balance = self.mt5_client.get_account_balance()
             risk_amount = account_balance * self.config.risk_per_trade
             sl_pips = abs(entry - stop_loss) / 0.0001
@@ -242,17 +239,14 @@ class MeanReversionBot:
             position_size = risk_amount / (sl_pips * pip_value)
             position_size = max(0.01, min(10, round(position_size, 2)))
 
-            # Place order
             result = self.order_handler.place_order(
                 pair, direction, entry, stop_loss, take_profit, position_size
             )
 
             if not result.get("success"):
-                self.logger.error("Order failed for %s: %s",
-                                  pair, result.get("error"))
+                self.logger.error("Order failed for %s: %s", pair, result.get("error"))
                 return False
 
-            # Save trade
             order_id = result.get("order_id")
             saved_trade = self.repository.save_trade(Trade(
                 symbol=pair,
@@ -267,6 +261,9 @@ class MeanReversionBot:
                 notes=f"order_id={order_id}",
             ))
 
+            if order_id is not None:
+                self._tracked_trade_ids[int(order_id)] = saved_trade.id
+
             self.performance["trades"] += 1
 
             self._notify_trade(signal, pair, position_size)
@@ -279,8 +276,7 @@ class MeanReversionBot:
 
         except Exception as exc:
             self.performance["errors"] += 1
-            self.logger.exception(
-                "Signal handling failed for %s: %s", pair, exc)
+            self.logger.exception("Signal handling failed for %s: %s", pair, exc)
             return False
 
     def _manage_positions(self) -> None:
@@ -298,23 +294,18 @@ class MeanReversionBot:
                 else:
                     profit_pips = (entry - current) / 0.0001
 
-                # Breakeven at 15 pips
                 if profit_pips >= 15:
-                    self.order_handler.modify_stop_loss(
-                        position.symbol, entry, ticket)
+                    self.order_handler.modify_stop_loss(position.symbol, entry, ticket)
 
-                # Partial exit at 30 pips
                 if profit_pips >= 30:
                     if self.order_handler.close_partial(position.symbol, 50.0, ticket):
-                        self.logger.info(
-                            "Partial exit (50%%) at %.1f pips", profit_pips)
+                        self.logger.info("Partial exit (50%%) at %.1f pips", profit_pips)
 
         except Exception as exc:
             self.logger.exception("Position management failed: %s", exc)
 
     def _check_risk_limits(self) -> bool:
-        daily_limit = self.risk_manager.starting_balance * \
-            abs(self.config.max_daily_loss)
+        daily_limit = self.risk_manager.starting_balance * abs(self.config.max_daily_loss)
         exceeded = self.risk_manager.daily_loss >= daily_limit or self.risk_manager.check_drawdown()
 
         if exceeded:
@@ -341,12 +332,15 @@ class MeanReversionBot:
             self.logger.info("Daily stats reset for %s", today)
 
     def _is_trading_day(self) -> bool:
+        """Monday (0) or Thursday (3)."""
         return datetime.now(timezone.utc).weekday() in [0, 3]
 
     def _is_active_hour(self) -> bool:
+        """00:00, 05:00, or 11:00 UTC."""
         return datetime.now(timezone.utc).hour in [0, 5, 11]
 
     def _get_sleep_until_next_trading_day(self) -> int:
+        """Calculate seconds until the next trading day."""
         now = datetime.now(timezone.utc)
         weekday = now.weekday()
 
@@ -360,16 +354,19 @@ class MeanReversionBot:
             6: 1,  # Sun → Mon
         }
 
-        next_day = now.replace(hour=0, minute=0, second=0, microsecond=0) + \
-            timedelta(days=days_until.get(weekday, 1))
+        next_day = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(
+            days=days_until.get(weekday, 1)
+        )
         seconds = int((next_day - now).total_seconds())
         return max(60, seconds)
 
     def _get_sleep_until_next_active_hour(self) -> int:
+        """Calculate seconds until the next active hour (FIXED)."""
         now = datetime.now(timezone.utc)
         current_hour = now.hour
         active_hours = [0, 5, 11]
 
+        # Find next active hour today
         next_hour = None
         for hour in active_hours:
             if hour > current_hour:
@@ -377,12 +374,15 @@ class MeanReversionBot:
                 break
 
         if next_hour is None:
-            next_hour = active_hours[0] + 24
-
-        next_time = now.replace(hour=next_hour, minute=0,
-                                second=0, microsecond=0)
-        if next_hour < current_hour:
-            next_time += timedelta(days=1)
+            # No active hour left today → next day at 00:00 UTC
+            next_time = (now + timedelta(days=1)).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+        else:
+            # Active hour later today
+            next_time = now.replace(
+                hour=next_hour, minute=0, second=0, microsecond=0
+            )
 
         seconds = int((next_time - now).total_seconds())
         return max(60, seconds)

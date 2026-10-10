@@ -1,58 +1,50 @@
 # Mean Reversion Forex Bot
 
-A Python-based automated trading bot for MetaTrader 5 (MT5) that scans a curated set of FX pairs for mean-reversion opportunities, applies risk controls, and can manage trade execution and notifications with Telegram.
+A Python trading bot for MetaTrader 5 (MT5) that scans a curated basket of FX pairs, evaluates mean-reversion setups, manages risk, and can send Telegram alerts for important trade events.
 
-This project is intended for research, backtesting, and controlled demo or personal trading workflows. It is not a guarantee of profitability, and it should only be used with careful risk management and a clear understanding of MT5 and forex market behavior.
+This project is designed for research, backtesting, and controlled demo or personal trading workflows. It is not a profit guarantee and should only be used with strict risk management.
 
-## Overview
+## Why this project exists
 
-The bot is built around a repeatable cycle:
+The bot combines a few common building blocks used in algorithmic FX trading:
 
-- fetch recent market data from MT5
-- run trading filters and safety checks
-- evaluate mean-reversion conditions for each configured symbol
-- size positions based on account risk
-- open, manage, and monitor trades
-- send Telegram alerts for important events
-- persist trade and state information locally
+- MT5 data ingestion
+- market/session filtering
+- mean-reversion signal detection
+- risk controls and position sizing
+- order execution management
+- SQLite trade persistence
+- Telegram notifications
 
-The prototype is structured to support a modular pipeline across data collection, filtering, signal generation, risk management, execution, and notifications.
+It is intentionally structured as a modular system so you can inspect, adjust, or replace components such as filters, strategies, risk rules, or execution logic without rewriting the whole project.
 
-## What the bot does
+## Core features
 
-- monitors a fixed basket of FX pairs
-- looks for oversold or overbought mean-reversion setups
-- checks session timing, liquidity windows, and market conditions before trading
-- enforces daily limits and drawdown controls
-- calculates position size from a configured risk percentage
-- handles trade lifecycle tasks such as partial exits and stop-loss adjustment
-- stores trade records in SQLite
-- sends Telegram alerts for startup, signal generation, and risk events
+- Multi-pair FX monitoring for major and cross pairs
+- Mean-reversion signal generation using price and indicator logic
+- Session and liquidity filters to reduce poor-quality setups
+- Drawdown and daily-loss protection
+- Position sizing based on configured account risk
+- MT5 order management and partial exits
+- SQLite-backed trade records
+- Telegram alerts for startup, risk events, and trade signals
+- Backtesting entry point for strategy validation
 
 ## Strategy profile
 
-The current implementation is centered on a mean reversion approach for FX pairs. It uses a pipeline similar to:
+The current implementation focuses on a mean reversion approach for FX markets.
 
-1. fetch recent OHLC data
-2. validate symbol and market conditions
-3. apply spread and liquidity filters
-4. generate a signal from the strategy logic
-5. check confidence and risk constraints
-6. calculate entry, stop loss, and take profit
-7. submit an MT5 order
+Typical flow:
 
-The default configuration targets active trade windows at 00:00, 05:00, and 11:00 UTC, with trading limited to Monday and Thursday patterns.
+1. Fetch recent OHLC data from MT5
+2. Validate symbol, session, and liquidity conditions
+3. Apply spread and market filters
+4. Run the strategy logic on the selected pair
+5. Check confidence and risk constraints
+6. Calculate entry, stop-loss, and take-profit
+7. Submit the order through MT5
 
-## Key features
-
-- MT5 integration for market data and order execution
-- multi-pair forex monitoring
-- mean-reversion signal generation
-- session and market safety checks
-- drawdown and daily loss protection
-- Telegram notifications for operational events
-- SQLite-backed persistence
-- modular architecture across strategy, risk, execution, and data layers
+The default configuration watches a small basket of pairs and restricts activity to specific market windows and trading days.
 
 ## Repository structure
 
@@ -63,53 +55,75 @@ bot/
 ├── README.md                 # Project documentation
 ├── config.py                 # Runtime configuration
 ├── main.py                   # Bot entry point
-├── requirements.txt          # Runtime dependencies
-├── requirements-dev.txt       # Development dependencies
-├── bot.db                    # SQLite database file
+├── requirements.txt          # Production dependencies
+├── requirements-dev.txt     # Development dependencies
+├── bot.db                   # SQLite database file
 ├── debug_signal_case.json    # Sample signal/debug case
-├── run_backtest.py            # Backtesting workflow entry point
-├── backtest/                 # Backtesting code and artifacts
+├── run_backtest.py           # Backtesting workflow entry point
+├── backtest/                 # Backtesting scripts and outputs
 ├── core/                     # Shared domain models
-├── data/                     # Local data storage or datasets
-├── db/                       # Database models and repository layer
-├── execution/                # MT5 order execution logic
-├── filter/                   # Session, liquidity, and market filters
-├── indicators/               # Indicator logic
-├── notifications/            # Telegram and message delivery
-├── risk/                     # Risk and portfolio controls
-├── results/                  # Strategy or backtest output
-├── strategies/               # Trading strategy implementations
-├── utils/                    # Utilities and logging helpers
-├── tests/                    # Project tests
-└── __pycache__/              # Python cache
+├── data/                    # Local data or generated artifacts
+├── db/                      # Database models and repository layer
+├── execution/               # MT5 client and order logic
+├── filter/                  # Session, spread, and liquidity filters
+├── indicators/              # Indicator implementations
+├── notifications/           # Telegram and notification handling
+├── risk/                    # Risk management logic
+├── results/                 # Strategy/backtest results
+├── strategies/              # Trading strategies
+├── tests/                   # Test suite
+├── utils/                   # Helpers and logging utilities
+└── __pycache__/             # Python cache
 ```
+
+## Prerequisites
+
+Before running the bot, make sure you have:
+
+- Python 3.10+ installed
+- A working MetaTrader 5 installation
+- A broker account connected to MT5
+- Access to the MT5 terminal and login credentials
+- A Telegram bot token and chat ID if you want notifications enabled
 
 ## Quick start
 
-1. Clone the repository
+### 1) Clone the repository
 
 ```bash
 git clone https://github.com/Matela-cyber/bot.git
 cd bot
 ```
 
-2. Create a virtual environment and install dependencies
+### 2) Create a virtual environment
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
+```
+
+On Windows:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+### 3) Install dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
-3. Configure your environment
+### 4) Configure environment variables
 
-Copy the example file and fill in the values you need:
+Copy the example environment file and update the values:
 
 ```bash
 cp .env.example .env
 ```
 
-4. Update the MT5 and bot settings in `.env`
+Then edit `.env` with your MT5 and Telegram settings.
 
 Example:
 
@@ -127,87 +141,102 @@ TELEGRAM_CHAT_ID=your_chat_id
 LOG_LEVEL=INFO
 ```
 
-5. Run the bot
-
-```bash
-python main.py
-```
-
 ## Configuration
 
-The main runtime configuration is defined in `config.py`. It reads environment variables and exposes default trading and risk values used by the bot.
+The bot reads configuration values from `config.py`, which loads environment variables from `.env`.
 
-Important settings include:
+Key runtime settings include:
 
-- `MT5_PATH`: local MetaTrader 5 installation path
-- `MT5_SERVER`, `MT5_LOGIN`, `MT5_PASSWORD`: MT5 account connection info
-- `TIMEFRAME`: chart timeframe used in the strategy loop
-- `CYCLE_INTERVAL`: delay between processing cycles
-- `RISK_PER_TRADE`: percent of account balance risked per trade
-- `MAX_DAILY_LOSS`: maximum permitted daily loss threshold
-- `DRAWDOWN_LIMIT`: hard drawdown cutoff
-- `TELEGRAM_TOKEN` and `TELEGRAM_CHAT_ID`: notifications
+- `MT5_PATH`: local MT5 installation path
+- `MT5_SERVER`: broker/server name
+- `MT5_LOGIN`: MT5 account login
+- `MT5_PASSWORD`: MT5 account password
+- `TIMEFRAME`: chart timeframe used for signal generation
+- `RISK_PER_TRADE`: percentage of account equity risked per trade
+- `MAX_DAILY_LOSS`: daily risk limit
+- `DRAWDOWN_LIMIT`: maximum acceptable drawdown
+- `TELEGRAM_TOKEN`, `TELEGRAM_CHAT_ID`: Telegram notifications
 - `DB_PATH`: SQLite database location
 - `LOG_LEVEL`: logging verbosity
 
-The bot currently defines a fixed list of trading pairs in `config.py`:
+The bot currently uses a fixed list of FX pairs in `config.py`:
 
 ```python
 ["AUDCAD", "GBPJPY", "EURJPY", "EURUSD", "EURGBP", "USDJPY", "USDCAD"]
 ```
 
-## Running and operation
+## Running the bot
 
-The bot is designed to run continuously while MT5 is available and the configured market windows remain active.
+Start the main trading loop:
 
-Operational flow:
+```bash
+python main.py
+```
 
-- initialize database and MT5 connection
-- check active trading days and time windows
-- fetch price data for each configured pair
-- evaluate strategy and filter logic
-- apply risk management and order sizing
-- submit trades through the MT5 client
-- send Telegram alerts and log execution details
+The bot will:
 
-## Risk controls
-
-The project includes explicit risk-management logic and protections such as:
-
-- max daily loss enforcement
-- drawdown monitoring
-- position and pair limits
-- trade sizing from account risk
-- spread/liquidity filtering
-- stop-loss and take-profit handling
-
-These controls are important because MT5-based automation can behave very differently from backtests or demo environments, especially under volatile market conditions.
+- initialize the database
+- connect to MT5
+- validate market/trading windows
+- process each configured pair
+- apply the strategy and filters
+- size and submit trades
+- persist execution data in SQLite
+- send alerts through Telegram
 
 ## Backtesting
 
-There is a backtesting entry point in `run_backtest.py` for evaluating the strategy logic in a more controlled setting. This is useful for validating behavior before live execution.
+The project includes a backtesting entry point:
 
-## Notes and warnings
+```bash
+python run_backtest.py
+```
 
-- This project is for educational and research use as well as controlled personal testing.
-- Do not deploy it without validating the strategy and risk assumptions in a safe environment.
-- MT5 permissions, connection stability, and broker setup can affect live execution results.
-- Ensure environment variables are correct before starting the bot.
-- Use caution with real-money accounts and never assume a strategy will be profitable.
+This is useful for validating strategy behavior in a controlled setting before exposing any live account to real-market risk.
 
-## Disclaimer
+## Risk controls and warnings
 
-This software is not financial advice and does not guarantee performance or profitability. Any live trading use is at your own risk. The author and contributors are not responsible for losses resulting from use of this code.
+This project includes several safety mechanisms, including:
 
-## Next improvements
+- maximum daily loss limits
+- drawdown monitoring
+- pair and position caps
+- spread and liquidity checks
+- risk-based position sizing
+- stop-loss and take-profit handling
 
-Possible future improvements include:
+It is important to understand that automated trading can behave differently in live markets than it does in backtests or demo environments.
 
-- better strategy configuration management
+## Important disclaimer
+
+This software is for educational, research, and controlled personal testing use. It is not financial advice and does not guarantee profitability or performance.
+
+Any live trading use is at your own risk. The author and contributors are not responsible for losses, execution issues, strategy failures, or account risk caused by using this project.
+
+## Recommended usage
+
+Use this project responsibly:
+
+- test thoroughly in a demo account first
+- validate the strategy with historical data
+- confirm broker and MT5 settings before live trading
+- keep risk limits conservative
+- monitor the system regularly
+- never assume a trading strategy will be profitable
+
+## Future improvements
+
+Possible next steps include:
+
+- cleaner strategy configuration management
 - richer backtest reporting and metrics
-- more precise trade journaling and analytics
-- cleaner Telegram alert formatting
-- more explicit deployment and test workflow documentation
+- better trade journaling and analytics
+- improved Telegram alert formatting
+- clearer deployment and operational documentation
+- expanded test coverage
 
-If you want, I can also turn this into a more polished GitHub README with badges, installation screenshots, and a cleaner project overview tailored for public release.
+If you want to extend the project, the most natural next areas are strategy tuning, risk configuration, and observability.
 
+---
+
+This project is a trading prototype and should be treated as a research and automation tool, not a guaranteed income source or turnkey investment system.
